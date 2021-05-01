@@ -1,3 +1,2 @@
-+ MAYAVERSION:2022 mnt_framework 1.0 ./mnt_framework
++ MAYAVERSION:2022 mnt_poseScopes 1.0 ./mnt_poseScopes
 [r] scripts: scripts
-MAYA_MODULE_UI_WORKSPACE_PATH+:=resources/workspaces
