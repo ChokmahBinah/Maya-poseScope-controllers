@@ -1,0 +1,16 @@
+global proc AEmnt_poseScopeTemplate(string $nodeName)
+{
+    editorTemplate -beginScrollLayout;
+        editorTemplate -beginLayout "mnt_poseScope Attributes" -collapse 0;
+        editorTemplate -label "Color" -addControl "color";
+        editorTemplate -label "Opacity" -addControl "opacity";
+        editorTemplate -label "Interactive Display" -addControl "interactiveDisplay";
+        editorTemplate -endLayout;
+
+    //AEdependNodeTemplate $nodeName;
+
+    editorTemplate -addExtraControls;
+	editorTemplate -endScrollLayout;
+
+    //evalDeferred ("AEmnt_poseScopeTemplateDelExtra(" + $nodeName + ");");
+}

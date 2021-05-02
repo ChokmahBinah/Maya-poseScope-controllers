@@ -1,0 +1,72 @@
+global proc AEmnt_groupNodeTemplate(string $nodeName)
+{
+	editorTemplate -beginScrollLayout;
+	    editorTemplate -beginLayout "mnt_groupNode Attributes" -collapse 0;
+        editorTemplate -label "Mode" - addControl "mode";
+        editorTemplate -label "Component Type" - addControl "componentType";
+        editorTemplate -label "Component" - addControl "component";
+        editorTemplate -label "Components List" - addControl "componentsList";
+
+		editorTemplate -callCustom "AEmnt_groupNode_addFromSelection" "AEmnt_groupNode_addFromSelectionEdit" $nodeName;		
+		editorTemplate -endLayout;
+
+	// include/call base class/node attributes
+	AEdependNodeTemplate $nodeName;
+
+	editorTemplate -addExtraControls;
+	editorTemplate -endScrollLayout;
+}
+
+global proc AEmnt_groupNode_addFromSelection(string $nodeNameArr)
+{	
+	string $buffer[];
+	tokenize($nodeNameArr,".",$buffer);
+	string $nodeName = $buffer[0];
+
+	setUITemplate -pst attributeEditorTemplate;
+
+    rowLayout -nc 2;
+    text -l "";
+	button -label "Add Component List From Selection"  -c ("componentListFromSelection(\"" + $nodeName + "\");") -width 217 getComponentListFromSelectionButton;
+	setParent ..;
+
+	setUITemplate -ppt;
+}
+
+global proc AEmnt_groupNode_addFromSelectionEdit(string $nodeNameArr)
+{
+	string $buffer[];
+	tokenize($nodeNameArr,".",$buffer);
+	string $nodeName = $buffer[0];
+
+	setUITemplate -pst attributeEditorTemplate;
+
+	button -e -c ("componentListFromSelection(\"" + $nodeName + "\");") getComponentListFromSelectionButton;
+	setUITemplate -ppt;
+}
+
+global proc componentListFromSelection(string $nodeName)
+{
+	python("import importlib\nimport mnt_apiTools as apiTools");
+	python("importlib.reload(apiTools)");
+	$string = python("apiTools.convertComponentSelectionToString()");
+
+	setAttr($nodeName + ".mode") 1;
+
+	if ($string[1] == "550")
+	{
+		setAttr($nodeName + ".componentType") 0;
+	}
+
+	if ($string[1] == "547")
+	{
+		setAttr($nodeName + ".componentType") 1;
+	}
+
+	if ($string[1] == "548")
+	{
+		setAttr($nodeName + ".componentType") 2;
+	}
+
+	setAttr -type "string" ($nodeName + ".componentsList") $string[0];
+}
