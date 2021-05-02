@@ -21,12 +21,12 @@ class MyTextureManager(OpenMayaRender.MTextureManager):#A Faire quand une classe
         pass
 
 class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
-    kPluginNodeName         = 'mntLocator' #Name of the node.
+    kPluginNodeName         = 'mnt_locator' #Name of the node.
     id                      = OpenMaya.MTypeId( 0xDAE2 ) # A unique ID associated to this node type.
     drawDbClassification    = "drawdb/geometry/MntLocatorNode"
     drawRegistrantId        = "MntLocatorNodePlugin"
 
-    iconFolder              = cmds.getModulePath(moduleName = 'mnt_poseScope') + '/icons/mntLocators/'
+    iconFolder              = cmds.getModulePath(moduleName = 'mnt_framework') + '/icons/mntLocators/'
     iconTypeAttribute       = OpenMaya.MObject()
     sizeAttribute           = OpenMaya.MObject()
     areaVisibility          = OpenMaya.MObject()
@@ -272,7 +272,7 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
                 MObjParentShape = MSelList.getDependNode(0)
                 MFnDependencyNodeParentShape = OpenMaya.MFnDependencyNode(MObjParentShape)
 
-                if MFnDependencyNodeParentShape.typeName == 'mntLocator':
+                if MFnDependencyNodeParentShape.typeName == 'mnt_locator':
                     # Gets Local matrix
                     localMatrix = MFnDagTransNode.transformationMatrix()
                     # _________________
