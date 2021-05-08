@@ -345,11 +345,11 @@ class Mnt_CreatePoseScopeShapeCmd(OpenMaya.MPxCommand):
             components      = MSelectionList.getComponent(i)
             componentType   = components[1].apiType()
             
-            if componentType != 552:
+            if componentType != OpenMaya.MFn.kMeshPolygonComponent:
                 OpenMaya.MGlobal.displayError('Selection is not of face type! Please select some polySurface face components')
                 pass
 
-            if componentType == 552:
+            if componentType == OpenMaya.MFn.kMeshPolygonComponent:
                 # Gets parent DAG object
                 shapeObj = MSelectionList.getDependNode(0)
                 self.shapeNode = OpenMaya.MFnDependencyNode(shapeObj)
