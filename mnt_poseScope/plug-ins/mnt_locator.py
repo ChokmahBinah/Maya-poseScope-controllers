@@ -132,22 +132,25 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         dottedLineFn.channelBox = True
         MntLocatorNode.addAttribute(MntLocatorNode.dottedLine)
 
-        dotsNumberFn = OpenMaya.MFnNumericAttribute()
-        MntLocatorNode.dotsNumber = dotsNumberFn.create('dots_number', 'dots_number', OpenMaya.MFnNumericData.kInt, 5)
-        dotsNumberFn.writable   = True 
-        dotsNumberFn.keyable    = False
-        dotsNumberFn.storable   = True
-        dotsNumberFn.hidden     = False
-        dotsNumberFn.channelBox = True
+        MntLocatorNode.dotsNumber = numericAttributeFn.create('dots_number', 'dots_number', OpenMaya.MFnNumericData.kInt, 5)
+        numericAttributeFn.writable   = True 
+        numericAttributeFn.keyable    = False
+        numericAttributeFn.storable   = True
+        numericAttributeFn.hidden     = False
+        numericAttributeFn.channelBox = True
+        numericAttributeFn.setMin(1)
+        numericAttributeFn.setMax(16)
         MntLocatorNode.addAttribute(MntLocatorNode.dotsNumber)
 
-        lineWidthFn = OpenMaya.MFnNumericAttribute()
-        MntLocatorNode.lineWidth = lineWidthFn.create('line_width', 'line_width', OpenMaya.MFnNumericData.kFloat, 4)
-        lineWidthFn.writable    = True
-        lineWidthFn.keyable     = True
-        lineWidthFn.storable    = True
-        lineWidthFn.hidden      = False
-        lineWidthFn.channelBox  = True
+        '''lineWidthFn = OpenMaya.MFnNumericAttribute()'''
+        MntLocatorNode.lineWidth = numericAttributeFn.create('line_width', 'line_width', OpenMaya.MFnNumericData.kFloat, 4)
+        numericAttributeFn.writable    = True
+        numericAttributeFn.keyable     = True
+        numericAttributeFn.storable    = True
+        numericAttributeFn.hidden      = False
+        numericAttributeFn.channelBox  = True
+        numericAttributeFn.setMin(1)
+        numericAttributeFn.setMax(16)
         MntLocatorNode.addAttribute(MntLocatorNode.lineWidth)
 
         lineColorFn = OpenMaya.MFnNumericAttribute()
