@@ -4,6 +4,8 @@ global proc AEmnt_poseScopeTemplate(string $nodeName)
         editorTemplate -beginLayout "mnt_poseScope Attributes" -collapse 0;
         editorTemplate -label "Color" -addControl "color";
         editorTemplate -label "Opacity" -addControl "opacity";
+        editorTemplate -label "Hilight Opacity" -addControl "hilightOpacity";
+        editorTemplate -label "XRay Mode" -addControl "xRayMode";
         editorTemplate -label "Interactive Display" -addControl "interactiveDisplay";
         editorTemplate -endLayout;
 
