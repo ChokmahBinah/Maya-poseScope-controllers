@@ -17,11 +17,14 @@ class Mnt_poseScopeNode(OpenMaya.MPxSurfaceShape):
     inMeshObjAttr               = OpenMaya.MObject()
     colorAttribute              = OpenMaya.MObject()
     opacityAttribute            = OpenMaya.MObject()
-    interactiveDisplayAttribute =  OpenMaya.MObject()
+    hilightOpacityAttribute     = OpenMaya.MObject()
+    xRayModeAttribute           = OpenMaya.MObject()
+    interactiveDisplayAttribute = OpenMaya.MObject()
     fsInputMeshChanged          = None
-
+    
     def __init__(self):
         OpenMaya.MPxSurfaceShape.__init__(self)
+        self.BBox = OpenMaya.MBoundingBox()
 
     @staticmethod
     def creator():
@@ -68,6 +71,24 @@ class Mnt_poseScopeNode(OpenMaya.MPxSurfaceShape):
         numericAttributeFn.setMax(1.0)   
         Mnt_poseScopeNode.addAttribute(Mnt_poseScopeNode.opacityAttribute)
 
+        Mnt_poseScopeNode.hilightOpacityAttribute = numericAttributeFn.create('hilightOpacity', 'hilightOpacity', OpenMaya.MFnNumericData.kFloat, 0.1)
+        numericAttributeFn.writable     = True
+        numericAttributeFn.channelBox   = True
+        numericAttributeFn.storable     = True
+        numericAttributeFn.hidden       = False
+        numericAttributeFn.keyable = False        
+        numericAttributeFn.setMin(0.0)
+        numericAttributeFn.setMax(1.0)   
+        Mnt_poseScopeNode.addAttribute(Mnt_poseScopeNode.hilightOpacityAttribute)
+
+        Mnt_poseScopeNode.xRayModeAttribute = numericAttributeFn.create('xRayMode', 'xRayMode', OpenMaya.MFnNumericData.kBoolean, False)
+        numericAttributeFn.writable     = True
+        numericAttributeFn.channelBox   = True
+        numericAttributeFn.storable     = True
+        numericAttributeFn.hidden       = False
+        numericAttributeFn.keyable = False        
+        Mnt_poseScopeNode.addAttribute(Mnt_poseScopeNode.xRayModeAttribute)
+
         Mnt_poseScopeNode.interactiveDisplayAttribute = numericAttributeFn.create('interactiveDisplay', 'interactiveDisplay', OpenMaya.MFnNumericData.kBoolean, False)
         numericAttributeFn.writable     = True
         numericAttributeFn.channelBox   = True
@@ -76,9 +97,15 @@ class Mnt_poseScopeNode(OpenMaya.MPxSurfaceShape):
         numericAttributeFn.keyable = False        
         Mnt_poseScopeNode.addAttribute(Mnt_poseScopeNode.interactiveDisplayAttribute)
 
-        # Cette ligne peut effectivement etre enlevee. Elle semble cooriger un lag du playback cache que j'avais auparavant.
+        # Cette ligne peut effectivement etre enlevee. Elle semble corriger un lag du playback cache que j'avais auparavant.
         #Mnt_poseScopeNode.attributeAffects(Mnt_poseScopeNode.inMeshObjAttr, Mnt_poseScopeNode.inMeshObjAttr)
-        
+
+    def isBounded(self):
+        return True
+
+    def boundingBox(self):
+        return self.BBox
+
     def getShapeSelectionMask(self):  
         selType = OpenMaya.MSelectionMask.kSelectLocators
         return OpenMaya.MSelectionMask(selType)
@@ -145,9 +172,6 @@ class Mnt_poseScopeDrawOverride(OpenMayaRender.MPxDrawOverride):
         self.MObj                           = obj
         self.inputMeshFn                    = None
         self.fComponent                     = None
-        self.shader                         = None
-        self.shaderColor                    = None
-        self.shaderOpacity                  = None  
         self.poseScopeShapePointsArray      = OpenMaya.MPointArray()
         self.poseScopeShapeIndexArray       = OpenMaya.MUintArray()
         self.doRefresh                      = True
@@ -225,7 +249,7 @@ class Mnt_poseScopeDrawOverride(OpenMayaRender.MPxDrawOverride):
         self.getInputFaces()
 
         matrix          = self.getWorldMatrix()
-
+                
         try:
             facesSet            = self.fComponent.getElements()
             inputMeshTriangles  = self.inputMeshFn.getTriangles()
@@ -241,9 +265,10 @@ class Mnt_poseScopeDrawOverride(OpenMayaRender.MPxDrawOverride):
                     point = self.inputMeshFn.getPoint(k).__mul__(matrix)
                     try:
                         self.poseScopeShapePointsArray.append(point)  
+                        self.fMesh.BBox.expand(point)# Expand BBox
                     except:
                         return
-                        
+        
         self.doRefresh = False
         self.fMesh.setInputMeshChangedSinceUpdate(False)
 
@@ -268,14 +293,15 @@ class Mnt_poseScopeDrawOverride(OpenMayaRender.MPxDrawOverride):
         MObjParent  = MFnDagNode.parent(0)
         MFnParent   = OpenMaya.MFnDependencyNode(MObjParent)
 
-        self.shaderColor    = self.node.findPlug('color', False).asMDataHandle().asFloat3()
-        self.shaderOpacity  = self.node.findPlug('opacity', False).asFloat()
+        data.shaderColor    = self.node.findPlug('color', False).asMDataHandle().asFloat3()
+        data.shaderOpacity  = self.node.findPlug('opacity', False).asFloat()
 
         if MActiveSel.length() > 0 and MFnParent.name() in MActiveSel.getSelectionStrings():
-            self.shaderOpacity = 0.1 + self.node.findPlug('opacity', False).asFloat()
-        # _____________________________________________________________________
+            data.shaderOpacity = self.node.findPlug('hilightOpacity', False).asFloat()
+        # _______________________________________________________________
 
         data.interactiveDisplay = self.node.findPlug('interactiveDisplay', False).asBool()
+        data.xRayMode           = self.node.findPlug('xRayMode', False).asBool()
 
         if not frameContext.inUserInteraction():
             if self.doRefresh == True or self.fMesh.evalInputMeshChangedSinceUpdate() == True:
@@ -297,9 +323,17 @@ class Mnt_poseScopeDrawOverride(OpenMayaRender.MPxDrawOverride):
     def addUIDrawables(self, objPath, drawManager, frameContext, data):
         if not frameContext.inUserInteraction() or data.interactiveDisplay == True and OpenMayaAnim.MAnimControl.isPlaying() == False:
             drawManager.beginDrawable(OpenMayaRender.MUIDrawManager.kSelectable)
+            
+            if data.xRayMode == True:
+                drawManager.beginDrawInXray()
+            
             drawManager.setDepthPriority(20)
-            drawManager.setColor(OpenMaya.MColor((self.shaderColor[0], self.shaderColor[1], self.shaderColor[2], self.shaderOpacity)))
-            drawManager.mesh(4, self.poseScopeShapePointsArray, None, None, self.poseScopeShapeIndexArray, None)
+            drawManager.setColor(OpenMaya.MColor((data.shaderColor[0], data.shaderColor[1], data.shaderColor[2], data.shaderOpacity)))
+            drawManager.mesh(OpenMayaRender.MUIDrawManager.kTriangles, self.poseScopeShapePointsArray, None, None, self.poseScopeShapeIndexArray, None)
+            
+            if data.xRayMode == True:
+                drawManager.endDrawInXray()
+
             drawManager.endDrawable()       
 # _____________________________
 
@@ -514,9 +548,6 @@ class Mnt_mirrorPoseScopeCmd(OpenMaya.MPxCommand):
                             faceCenter = faceCenter.__add__(OpenMaya.MVector(position[0] / len(vertices), position[1] / len(vertices), position[2] / len(vertices)))
 
                         symPoint = OpenMaya.MPoint((-faceCenter[0], faceCenter[1], faceCenter[2]))
-                        # This part seems very slow
-                        #  symFace = inputMeshFn.getClosestPoint(symPoint, OpenMaya.MSpace.kObject)#The part I need to speed up.
-                        # I replaced it using MMeshIntersector method to seepd up this step.
                         closestPoint = meshIntersector.getClosestPoint(symPoint)
                         symFace = closestPoint.face
 
@@ -556,8 +587,16 @@ class Mnt_mirrorPoseScopeCmd(OpenMaya.MPxCommand):
         # If an opposite transform node exists (_L_ or _R_), parent the new node to it.
         if '_L_' in MDagPath.__str__():
             oppositeTransformNode = MDagPath.__str__().replace('_L_', '_R_')
+        elif 'L_' in MDagPath.__str__():
+            oppositeTransformNode = MDagPath.__str__().replace('L_', 'R_')
+        elif '_L' in MDagPath.__str__():
+            oppositeTransformNode = MDagPath.__str__().replace('_L', '_R')
         elif '_R_' in MDagPath.__str__():
             oppositeTransformNode = MDagPath.__str__().replace('_R_', '_L_')
+        elif 'R_' in MDagPath.__str__():
+            oppositeTransformNode = MDagPath.__str__().replace('R_', 'L_')
+        elif '_R' in MDagPath.__str__():
+            oppositeTransformNode = MDagPath.__str__().replace('_R', '_L')
         else:
             oppositeTransformNode = MDagPath.__str__() + "_copy"
         
@@ -612,7 +651,7 @@ class Mnt_TogglePoseScopeShapesVisibilityCmd(OpenMaya.MPxCommand):
         return
 # ________________________________________________
 
-# Creates getGroupNodeFomPoseScope command.
+# Creates deletePoseScope command
 class Mnt_DeletePoseScopeCmd(OpenMaya.MPxCommand):
     kPluginCmdName = 'deletePoseScope'
     transformNodesList  = []
@@ -662,6 +701,7 @@ class Mnt_DeletePoseScopeCmd(OpenMaya.MPxCommand):
             # Parents poseScope shape to transformNode
             transformDagNode = OpenMaya.MFnDagNode(MTransformNodeObj)
             transformDagNode.addChild(poseScopeNodePath.node(), 0, False)
+            OpenMaya.MGlobal.deleteNode(poseScopeDagNodeObj)
             # ________________________________________
 
             # Recreates group Node
@@ -721,7 +761,57 @@ class Mnt_DeletePoseScopeCmd(OpenMaya.MPxCommand):
 
                     self.transformNodesList.append(str(MDagPath))
                     OpenMaya.MGlobal.deleteNode(child)      
-# _________________________________________
+# _______________________________
+
+# Creates selectComponentsFromGroupNode command
+class Mnt_selectComponentsFromGroupNodeCmd(OpenMaya.MPxCommand):
+    kPluginCmdName = 'selectComponentsFromGroupNode'
+
+    def __init__(self):
+        OpenMaya.MPxCommand.__init__(self)
+
+    @staticmethod
+    def creator():
+        return Mnt_selectComponentsFromGroupNodeCmd()
+
+    def doIt(self, args):
+        self.redoIt()
+        return
+
+    def redoIt(self):
+        MObj = self.get_mnt_groupNode()
+        nodeDNFn = OpenMaya.MFnDependencyNode(MObj)
+        
+        outputsComponentPlug = nodeDNFn.findPlug('outputsComponent', False)
+        print(outputsComponentPlug)
+
+    def get_mnt_groupNode(self):
+        MselectionList  = OpenMaya.MGlobal.getActiveSelectionList()
+        MObj            = MselectionList.getDependNode(0)
+        MObjDNFn        = OpenMaya.MFnDependencyNode(MObj)
+
+        if MObjDNFn.typeName == 'mnt_groupNode':
+            return MObj
+        
+        elif MObjDNFn.typeName == 'transform':
+            MDagPath =OpenMaya.MDagPath.getAPathTo(MObj)
+
+            for i in range(MDagPath.childCount()):
+                child = MDagPath.child(i)
+                childDNFn = OpenMaya.MFnDependencyNode(child)
+
+                if childDNFn.typeName == 'mnt_poseScope':
+                    inputFaceComponentsPlug = childDNFn.findPlug('inputFaceComponents', False)
+                    connections = inputFaceComponentsPlug.connectedTo(True, False)
+
+                    for i in range(0, len(connections)):
+                        node = connections[i].node()
+                        nodeDNFn = OpenMaya.MFnDependencyNode(node)
+                        
+                        if nodeDNFn.typeName == 'mnt_groupNode':
+                            return node
+                            break
+# _____________________________________________
 
 def initializePlugin(obj):
     plugin = OpenMaya.MFnPlugin(obj, 'Florian Delarque & Colin Bruneau', '1.4', 'Any')
@@ -742,6 +832,7 @@ def initializePlugin(obj):
         plugin.registerCommand(Mnt_mirrorPoseScopeCmd.kPluginCmdName, Mnt_mirrorPoseScopeCmd.creator)
         plugin.registerCommand(Mnt_TogglePoseScopeShapesVisibilityCmd.kPluginCmdName, Mnt_TogglePoseScopeShapesVisibilityCmd.creator)
         plugin.registerCommand(Mnt_DeletePoseScopeCmd.kPluginCmdName, Mnt_DeletePoseScopeCmd.creator)
+        plugin.registerCommand(Mnt_selectComponentsFromGroupNodeCmd.kPluginCmdName, Mnt_selectComponentsFromGroupNodeCmd.creator)
     except:
         OpenMaya.MGlobal.displayError('Failed to register createPoseScopeShape command.\n')
 
@@ -765,5 +856,6 @@ def uninitializePlugin(obj):
         plugin.deregisterCommand(Mnt_mirrorPoseScopeCmd.kPluginCmdName)
         plugin.deregisterCommand(Mnt_TogglePoseScopeShapesVisibilityCmd.kPluginCmdName)
         plugin.deregisterCommand(Mnt_DeletePoseScopeCmd.kPluginCmdName)
+        plugin.deregisterCommand(Mnt_selectComponentsFromGroupNodeCmd.kPluginCmdName)
     except:
         OpenMaya.MGlobal.displayError('Failed to deregister createPoseScopeShape command.\n')
