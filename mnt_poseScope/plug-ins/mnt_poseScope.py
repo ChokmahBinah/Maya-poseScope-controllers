@@ -379,24 +379,23 @@ class Mnt_CreatePoseScopeShapeCmd(OpenMaya.MPxCommand):
         componentListStr    = ''
         poseScopeSelList    = OpenMaya.MSelectionList()
         MSelectionList      = OpenMaya.MGlobal.getActiveSelectionList()
+        transformNode       = None
 
         if MSelectionList.length() == 0:
             OpenMaya.MGlobal.displayError('Nothing selected! Please select some polySurface faces components.')
             return
 
-        lastSelNodeObj = MSelectionList.getDependNode(MSelectionList.length()-1)
-
-        if MSelectionList.getComponent(MSelectionList.length() - 1)[1].apiType() == OpenMaya.MFn.kInvalid:
-            maxRange = MSelectionList.length() - 1
-        else:
-            maxRange = MSelectionList.length()
-
-        for i in range(0, maxRange):
+        for i in range(0, MSelectionList.length()):
+            if MSelectionList.getComponent(i)[1].apiType() != OpenMaya.MFn.kMeshPolygonComponent:
+                transformNode = MSelectionList.getDependNode(i)
+                break
+            
+        for i in range(0, MSelectionList.length()):
             components      = MSelectionList.getComponent(i)
             componentType   = components[1].apiType()
             
             if componentType != OpenMaya.MFn.kMeshPolygonComponent:
-                OpenMaya.MGlobal.displayError('Selection is not of face type! Please select some polySurface face components')
+                #OpenMaya.MGlobal.displayError('Selection is not of face type! Please select some polySurface face components')
                 pass
 
             if componentType == OpenMaya.MFn.kMeshPolygonComponent:
@@ -407,45 +406,53 @@ class Mnt_CreatePoseScopeShapeCmd(OpenMaya.MPxCommand):
 
                 # Gets face components list if some selected.
                 componentListData   = OpenMaya.MFnSingleIndexedComponent(components[1])
-                componentListStr    = str(componentListData.getElements()).replace('[', '').replace(']', '').replace(',', '')
+                componentListStr    = componentListStr + str(componentListData.getElements()).replace('[', '').replace(']', '').replace(',', '') + ' '
                 # ___________________________________________
 
-                # Creates mnt_groupNode DG node.
-                DGModifier      = OpenMaya.MDGModifier()
-                self.groupNodeObj    = DGModifier.createNode('mnt_groupNode')
-                groupNode = OpenMaya.MFnDependencyNode(self.groupNodeObj)
-                groupNode.findPlug('mode', False).setInt(1)
-                groupNode.findPlug('componentsList', False).setString(componentListStr)
-                # ______________________________
-                
-                # Creates mnt_poseScope DAG node.
-                poseScopeDagNodeFn  = OpenMaya.MFnDagNode()
-                self.poseScopeDagNodeObj = poseScopeDagNodeFn.create('mnt_poseScope')
-                poseScopeNodePath   = OpenMaya.MFnDagNode(self.poseScopeDagNodeObj).getPath().extendToShape()
-                poseScopeNode       = OpenMaya.MFnDependencyNode(poseScopeNodePath.node())
-                poseScopeNode.findPlug('colorR', False).setDouble(1.0)
-                poseScopeNode.findPlug('colorG', False).setDouble(0.75)
-                poseScopeNode.findPlug('colorB', False).setDouble(0.0)
-                poseScopeNode.findPlug('opacity', False).setFloat(0.1)
-                # _______________________________
+        # Creates mnt_groupNode DG node.
+        DGModifier      = OpenMaya.MDGModifier()
+        self.groupNodeObj    = DGModifier.createNode('mnt_groupNode')
+        groupNode = OpenMaya.MFnDependencyNode(self.groupNodeObj)
+        groupNode.findPlug('mode', False).setInt(1)
+        groupNode.findPlug('componentsList', False).setString(componentListStr)
+        # ______________________________
 
-                # Creates connections.
-                DGModifier.connect(groupNode.findPlug('outputsComponent', False), poseScopeNode.findPlug('inputFaceComponents', False))
-                DGModifier.connect(shapeNode.findPlug('outMesh', False), poseScopeNode.findPlug('inputMesh', False))
-                DGModifier.doIt()
-                # ____________________
+        # Creates mnt_poseScope DAG node.
+        poseScopeDagNodeFn  = OpenMaya.MFnDagNode()
+        self.poseScopeDagNodeObj = poseScopeDagNodeFn.create('mnt_poseScope')
+        poseScopeNodePath   = OpenMaya.MFnDagNode(self.poseScopeDagNodeObj).getPath().extendToShape()
+        poseScopeNode       = OpenMaya.MFnDependencyNode(poseScopeNodePath.node())
+        poseScopeNode.findPlug('colorR', False).setDouble(1.0)
+        poseScopeNode.findPlug('colorG', False).setDouble(0.75)
+        poseScopeNode.findPlug('colorB', False).setDouble(0.0)
+        poseScopeNode.findPlug('opacity', False).setFloat(0.05)
+        # _______________________________
+        
+        # Creates connections.
+        DGModifier.connect(groupNode.findPlug('outputsComponent', False), poseScopeNode.findPlug('inputFaceComponents', False))
+        DGModifier.connect(shapeNode.findPlug('outMesh', False), poseScopeNode.findPlug('inputMesh', False))
+        DGModifier.doIt()
+        # ____________________
 
-        # If last node seleted is transform type, parent the posescope to it.
-        if MSelectionList.getComponent(MSelectionList.length() - 1)[1].apiType() == OpenMaya.MFn.kInvalid:
+        # If a transform node is selected, parent the poseScope shape to it
+        if transformNode:
             shapeSel = OpenMaya.MSelectionList()
             shapeSel.add(OpenMaya.MFnDagNode(self.poseScopeDagNodeObj).getPath().extendToShape())
             self.poseScopeShapeObj = shapeSel.getDependNode(0)
+            #lastSelNodeObj = transformNode#____
+            lastSelDagNode = OpenMaya.MFnDagNode(transformNode)
 
-            lastSelDagNode = OpenMaya.MFnDagNode(lastSelNodeObj)
+            for i in range(0, lastSelDagNode.childCount()):
+                try:
+                    childDNFn = OpenMaya.MFnDependencyNode(lastSelDagNode.child(i))
+                    if OpenMaya.MFnDependencyNode(lastSelDagNode.child(i)).typeName == 'mnt_poseScope':
+                        OpenMaya.MGlobal.deleteNode(lastSelDagNode.child(i))
+                except:
+                    pass
+
             lastSelDagNode.addChild(self.poseScopeShapeObj, 0, False)
-
             OpenMaya.MGlobal.deleteNode(self.poseScopeDagNodeObj)
-        # ___________________________________________________________________
+        # _________________________________________________________________
 
         return
 # ______________________________
@@ -607,6 +614,15 @@ class Mnt_mirrorPoseScopeCmd(OpenMaya.MPxCommand):
             oppositeTransformNodeObj    = oppositeSel.getDependNode(0)
             posescopeShapeObj           = oppositeSel.getDependNode(1)
             oppositeTransformDagNode    = OpenMaya.MFnDagNode(oppositeTransformNodeObj)
+
+            for i in range(0, oppositeTransformDagNode.childCount()):
+                try:
+                    childDNFn = OpenMaya.MFnDependencyNode(oppositeTransformDagNode.child(i))
+                    if OpenMaya.MFnDependencyNode(oppositeTransformDagNode.child(i)).typeName == 'mnt_poseScope':
+                        OpenMaya.MGlobal.deleteNode(oppositeTransformDagNode.child(i))
+                except:
+                    pass
+
             oppositeTransformDagNode.addChild(posescopeShapeObj, 0, False)
             OpenMaya.MGlobal.deleteNode(self.poseScopeDagNodeObj)
         except:
@@ -764,28 +780,67 @@ class Mnt_DeletePoseScopeCmd(OpenMaya.MPxCommand):
 # _______________________________
 
 # Creates selectComponentsFromGroupNode command
-class Mnt_selectComponentsFromGroupNodeCmd(OpenMaya.MPxCommand):
-    kPluginCmdName = 'selectComponentsFromGroupNode'
+class Mnt_editPoseScopeComponentsCmd(OpenMaya.MPxCommand):
+    kPluginCmdName = 'editPoseScopeComponents'
 
     def __init__(self):
         OpenMaya.MPxCommand.__init__(self)
 
     @staticmethod
     def creator():
-        return Mnt_selectComponentsFromGroupNodeCmd()
+        return Mnt_editPoseScopeComponentsCmd()
+
+    def isUndoable(self):
+        return True
 
     def doIt(self, args):
         self.redoIt()
         return
 
     def redoIt(self):
-        MObj = self.get_mnt_groupNode()
-        nodeDNFn = OpenMaya.MFnDependencyNode(MObj)
-        
-        outputsComponentPlug = nodeDNFn.findPlug('outputsComponent', False)
-        print(outputsComponentPlug)
+        MSelectionList  = OpenMaya.MSelectionList()
+        MActiveList     = OpenMaya.MGlobal.getActiveSelectionList()
+        MObj            = MActiveList.getDependNode(0)
 
-    def get_mnt_groupNode(self):
+        MposeScopeMeshObj   = self.get_poseScopeMesh()
+        MGroupNodeObj       = self.get_groupNode()
+        MTransformNode      = self.get_transformNode()
+
+        nodeDNFn                = OpenMaya.MFnDependencyNode(MGroupNodeObj)
+        outputsComponentPlug    = nodeDNFn.findPlug('outputsComponent', False)
+        outputsComponent        = outputsComponentPlug.asMObject()
+        componentListData       = OpenMaya.MFnComponentListData(outputsComponent)
+               
+        for i in range(0, componentListData.length()):
+            MSelectionList.add((OpenMaya.MDagPath.getAPathTo(MposeScopeMeshObj), componentListData.get(i)))
+
+        MSelectionList.add(OpenMaya.MDagPath.getAPathTo(MTransformNode))
+
+        OpenMaya.MGlobal.setComponentSelectionMask(OpenMaya.MSelectionMask.kSelectMeshFaces)
+        OpenMaya.MGlobal.setSelectionMode(OpenMaya.MGlobal.kSelectComponentMode)
+        OpenMaya.MGlobal.setHiliteList(MSelectionList)
+        OpenMaya.MGlobal.setActiveSelectionList(MSelectionList)
+
+    def get_transformNode(self):
+        MselectionList  = OpenMaya.MGlobal.getActiveSelectionList()
+        MObj            = MselectionList.getDependNode(0)
+        MObjDNFn        = OpenMaya.MFnDependencyNode(MObj)
+
+        if MObjDNFn.typeName == 'transform':
+            return MObj
+        
+        elif MObjDNFn.typeName == 'mnt_groupNode':
+            outputsComponentPlug = MObjDNFn.findPlug('outputsComponent', False)
+            connections = outputsComponentPlug.connectedTo(False, True)
+
+            for i in range(0, len(connections)):
+                node = connections[i].node()
+                nodeDNFn = OpenMaya.MFnDependencyNode(node)
+                 
+                if nodeDNFn.typeName == 'mnt_poseScope':
+                    return OpenMaya.MDagPath.getAPathTo(node).transform()
+
+    def get_groupNode(self):
         MselectionList  = OpenMaya.MGlobal.getActiveSelectionList()
         MObj            = MselectionList.getDependNode(0)
         MObjDNFn        = OpenMaya.MFnDependencyNode(MObj)
@@ -811,7 +866,161 @@ class Mnt_selectComponentsFromGroupNodeCmd(OpenMaya.MPxCommand):
                         if nodeDNFn.typeName == 'mnt_groupNode':
                             return node
                             break
+    
+    def get_poseScopeMesh(self):
+        MselectionList  = OpenMaya.MGlobal.getActiveSelectionList()
+        MObj            = MselectionList.getDependNode(0)
+        MObjDNFn        = OpenMaya.MFnDependencyNode(MObj)
+        poseScopeNode   = None
+
+        if MObjDNFn.typeName == 'mnt_groupNode':
+            outputsComponentPlug = MObjDNFn.findPlug('outputsComponent', False)
+            connections = outputsComponentPlug.connectedTo(False, True)
+            
+            for i in range(0, len(connections)):
+                node = connections[i].node()
+                nodeDNFn = OpenMaya.MFnDependencyNode(node)
+                 
+                if nodeDNFn.typeName == 'mnt_poseScope':
+                    poseScopeNode = node
+                    break
+        
+        elif MObjDNFn.typeName == 'transform':
+            poseScopeNode = OpenMaya.MDagPath.getAPathTo(MObj).extendToShape().node()
+        
+        inputMeshPlug = OpenMaya.MFnDependencyNode(poseScopeNode).findPlug('inputMesh', False)
+        connections = inputMeshPlug.connectedTo(True, False)
+
+        for i in range(0, len(connections)):
+            node = connections[i].node()
+
+            if node.apiType() == OpenMaya.MFn.kMesh:
+                return node
+                break
 # _____________________________________________
+
+# Creates transfertPoseScopes command
+class Mnt_transfertPoseScopesCmd(OpenMaya.MPxCommand):
+    kPluginCmdName = 'transfertPoseScopes'
+
+    def __init__(self):
+        OpenMaya.MPxCommand.__init__(self)
+    
+    @staticmethod
+    def creator():
+        return Mnt_transfertPoseScopesCmd()
+    
+    def isUndoable(self):
+        return True
+
+    def doIt(self, *args):
+        self.redoIt()
+        return 
+    
+    def undoIt(self, *args):
+        OpenMaya.MGlobal.displayWarning('This command is not undoable !')
+        return
+    
+    def redoIt(self, * args):
+        MSelectionList  = OpenMaya.MGlobal.getActiveSelectionList()
+        sourceMeshShape = None
+        destMeshShape   = None
+        sComponentList  = None
+        dComponentList  = None
+        groupNodesList  = []
+
+        if MSelectionList.length() != 2:
+            OpenMaya.MGlobal.displayError('Not enough objects selected. You need to select a source mesh and a destination mesh to use this command !')
+            return
+
+        for i in range(MSelectionList.length()):
+            MObj = MSelectionList.getDependNode(i)
+            MPath = OpenMaya.MDagPath.getAPathTo(MObj)
+            MShape = MPath.extendToShape()
+            
+            if MShape.apiType() != OpenMaya.MFn.kMesh:
+                OpenMaya.MGlobal.displayError('One of the selected objects is not a polySurface. Please check your selection !')
+                return
+            else:
+                if i == 0:
+                    sourceMeshShape = MShape.node()
+                else:
+                    destMeshShape = MShape.node()
+
+        OpenMaya.MGlobal.displayInfo('Transferring poseScopes.')
+        
+        sourceMeshShapeFn   = OpenMaya.MFnDependencyNode(sourceMeshShape)
+        destMeshShapeFn     = OpenMaya.MFnDependencyNode(destMeshShape)
+        sOutMeshPlug        = sourceMeshShapeFn.findPlug('outMesh', False)
+        dOutMeshPlug        = destMeshShapeFn.findPlug('outMesh', False)
+        connections         = sOutMeshPlug.connectedTo(False, True)
+        dMeshFn             = OpenMaya.MFnMesh(destMeshShape)
+        DGModifier          = OpenMaya.MDGModifier()
+
+        # Creates MPointOnMesh and MMeshIntersector to find opposite faces IDs
+        meshIntersector = OpenMaya.MMeshIntersector()
+        meshIntersector.create(sourceMeshShape, OpenMaya.MMatrix.kIdentity)
+        # ____________________________________________________________________
+
+        # Creates a MItMeshPolygon to iterate throw destination mesh
+        '''meshIterator = OpenMaya.MItMeshPolygon(destMeshShape)'''
+        # __________________________________________________________
+
+        for i in range(0, len(connections)):
+            node = connections[i].node()
+            nodeFn = OpenMaya.MFnDependencyNode(node)
+
+            if nodeFn.typeName == 'mnt_poseScope':
+                groupNodeObj = None
+                sourceMeshFn = OpenMaya.MFnMesh(sOutMeshPlug.node())
+
+                # Deconnects poseScopes from source polySurface and reconnects them to the new one
+                psInputMeshPlug = nodeFn.findPlug('inputMesh', False)
+                DGModifier.disconnect(sOutMeshPlug, psInputMeshPlug)
+                DGModifier.connect(dOutMeshPlug, psInputMeshPlug)
+                DGModifier.doIt()
+                # ________________________________________________________________________________
+
+                sInputFaceComponentsPlug = nodeFn.findPlug('inputFaceComponents', False)
+                plugConnections = sInputFaceComponentsPlug.connectedTo(True, False)
+                
+                # Finds connected group node
+                for iPlug in plugConnections:
+                    node = iPlug.node()
+                    nodeDNFn = OpenMaya.MFnDependencyNode(node)
+
+                    if nodeDNFn.typeName == 'mnt_groupNode' and node not in groupNodesList:
+                        sComponentList = []
+                        groupNodeObj = node
+                        sComponentListPlug = OpenMaya.MFnDependencyNode(node).findPlug('componentsList', False)
+                        sComponentList = sComponentListPlug.asString().split()
+                        groupNodesList.append(node)
+                        continue
+                # __________________________
+                
+                dComponentList  = []
+                dComponentListStr = None
+
+                for i in range(dMeshFn.numPolygons):
+                    vertices = dMeshFn.getPolygonVertices(i)
+                    faceCenter = OpenMaya.MVector((0.0, 0.0, 0.0))
+
+                    for vertex in vertices:
+                        position = dMeshFn.getPoint(vertex)
+                        faceCenter = faceCenter.__add__(OpenMaya.MVector(position[0] / len(vertices), position[1] / len(vertices), position[2] / len(vertices)))
+                                    
+                    closestPoint = meshIntersector.getClosestPoint(OpenMaya.MPoint(faceCenter), 0.1)
+                    dFaceID = closestPoint.face
+                                
+                    if str(dFaceID) in sComponentList:
+                        dComponentList.append(str(i))
+                                
+                dComponentListStr = " ".join(dComponentList)               
+                sComponentListPlug.setString(dComponentListStr)
+
+        OpenMaya.MGlobal.displayInfo('Posescopes transferred.')
+        return
+# __________________________________
 
 def initializePlugin(obj):
     plugin = OpenMaya.MFnPlugin(obj, 'Florian Delarque & Colin Bruneau', '1.4', 'Any')
@@ -832,7 +1041,8 @@ def initializePlugin(obj):
         plugin.registerCommand(Mnt_mirrorPoseScopeCmd.kPluginCmdName, Mnt_mirrorPoseScopeCmd.creator)
         plugin.registerCommand(Mnt_TogglePoseScopeShapesVisibilityCmd.kPluginCmdName, Mnt_TogglePoseScopeShapesVisibilityCmd.creator)
         plugin.registerCommand(Mnt_DeletePoseScopeCmd.kPluginCmdName, Mnt_DeletePoseScopeCmd.creator)
-        plugin.registerCommand(Mnt_selectComponentsFromGroupNodeCmd.kPluginCmdName, Mnt_selectComponentsFromGroupNodeCmd.creator)
+        plugin.registerCommand(Mnt_editPoseScopeComponentsCmd.kPluginCmdName, Mnt_editPoseScopeComponentsCmd.creator)
+        plugin.registerCommand(Mnt_transfertPoseScopesCmd.kPluginCmdName, Mnt_transfertPoseScopesCmd.creator)
     except:
         OpenMaya.MGlobal.displayError('Failed to register createPoseScopeShape command.\n')
 
@@ -856,6 +1066,7 @@ def uninitializePlugin(obj):
         plugin.deregisterCommand(Mnt_mirrorPoseScopeCmd.kPluginCmdName)
         plugin.deregisterCommand(Mnt_TogglePoseScopeShapesVisibilityCmd.kPluginCmdName)
         plugin.deregisterCommand(Mnt_DeletePoseScopeCmd.kPluginCmdName)
-        plugin.deregisterCommand(Mnt_selectComponentsFromGroupNodeCmd.kPluginCmdName)
+        plugin.deregisterCommand(Mnt_editPoseScopeComponentsCmd.kPluginCmdName)
+        plugin.deregisterCommand(Mnt_transfertPoseScopesCmd.kPluginCmdName)
     except:
         OpenMaya.MGlobal.displayError('Failed to deregister createPoseScopeShape command.\n')
