@@ -77,7 +77,7 @@ class mnt_DynSelection():
         
         if panelType == 'modelPanel':            
             shapesUnderCursor   = cmds.hitTest(panel, cursorPos[0], cursorPos[1])
-            print(shapesUnderCursor)
+            
             if len(shapesUnderCursor) > 0:                          
                 shape = cmds.ls(shapesUnderCursor[len(shapesUnderCursor) - 1], flatten = True)[0]# It seems do have a test error here ...
                 shape = cmds.ls(shapesUnderCursor[0], flatten = True)[0]# I did a bad selection indeed ...
