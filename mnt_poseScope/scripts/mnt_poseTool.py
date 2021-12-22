@@ -2,6 +2,7 @@ import ctypes
 import maya.cmds as cmds
 import maya.api.OpenMaya as OpenMaya
 import maya.api.OpenMayaUI as OpenMayaUI
+import maya.api.OpenMayaRender as OpenMayaRender
 
 def maya_useNewAPI():
  pass
@@ -53,9 +54,10 @@ class mnt_DynSelection():
     def __del__(self):
         self.delCallbacks()
         self.resetScenePoseScopeShapesOpacities()
+        del(self.initialOpacities)
         cmds.inViewMessage(smg = '<span style = \'color:#fdd28a;\' <\span> Pose Tool Off', pos  = 'topCenter' , bkc  = 0x00000000, a = 0.2, fade = True, fts = 8)
 
-    def delCallbacks(self):
+    def delCallbacks(self, *args):
         self.idleCallback.uninstall()
         self.newSceneCallBack.uninstall()
 
@@ -77,10 +79,9 @@ class mnt_DynSelection():
         
         if panelType == 'modelPanel':            
             shapesUnderCursor   = cmds.hitTest(panel, cursorPos[0], cursorPos[1])
-            
+
             if len(shapesUnderCursor) > 0:                          
-                shape = cmds.ls(shapesUnderCursor[len(shapesUnderCursor) - 1], flatten = True)[0]# It seems do have a test error here ...
-                shape = cmds.ls(shapesUnderCursor[0], flatten = True)[0]# I did a bad selection indeed ...
+                shape = cmds.ls(shapesUnderCursor, flatten = True)[0]
                 
                 if cmds.objectType(shape) == 'mnt_poseScope':
                     if shape != self.oldShape :
