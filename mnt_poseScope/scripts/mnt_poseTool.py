@@ -77,16 +77,18 @@ class mnt_DynSelection():
         
         if panelType == 'modelPanel':            
             shapesUnderCursor   = cmds.hitTest(panel, cursorPos[0], cursorPos[1])
+            print(shapesUnderCursor)
             if len(shapesUnderCursor) > 0:                          
-                shape = cmds.ls(shapesUnderCursor[len(shapesUnderCursor) - 1], flatten = True)[0]
-
+                shape = cmds.ls(shapesUnderCursor[len(shapesUnderCursor) - 1], flatten = True)[0]# It seems do have a test error here ...
+                shape = cmds.ls(shapesUnderCursor[0], flatten = True)[0]# I did a bad selection indeed ...
+                
                 if cmds.objectType(shape) == 'mnt_poseScope':
                     if shape != self.oldShape :
                         self.oldattrValue = cmds.getAttr(shape + '.opacity')
 
                         if self.oldShape:
                             cmds.setAttr(self.oldShape + '.opacity', self.oldattrValue)
-                        cmds.setAttr(shape + '.opacity', 0.3)
+                        cmds.setAttr(shape + '.opacity', 0.15)
                         self.oldShape = shape
 
             if len(shapesUnderCursor) == 0:
