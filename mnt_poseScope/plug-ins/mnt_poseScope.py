@@ -439,13 +439,18 @@ class Mnt_CreatePoseScopeShapeCmd(OpenMaya.MPxCommand):
             shapeSel = OpenMaya.MSelectionList()
             shapeSel.add(OpenMaya.MFnDagNode(self.poseScopeDagNodeObj).getPath().extendToShape())
             self.poseScopeShapeObj = shapeSel.getDependNode(0)
-            #lastSelNodeObj = transformNode#____
             lastSelDagNode = OpenMaya.MFnDagNode(transformNode)
 
             for i in range(0, lastSelDagNode.childCount()):
                 try:
                     childDNFn = OpenMaya.MFnDependencyNode(lastSelDagNode.child(i))
-                    if OpenMaya.MFnDependencyNode(lastSelDagNode.child(i)).typeName == 'mnt_poseScope':
+                    if childDNFn.typeName == 'mnt_poseScope':                        
+                        poseScopeNode.findPlug('colorR', False).setDouble(childDNFn.findPlug('colorR', False).asDouble())
+                        poseScopeNode.findPlug('colorG', False).setDouble(childDNFn.findPlug('colorG', False).asDouble())
+                        poseScopeNode.findPlug('colorB', False).setDouble(childDNFn.findPlug('colorB', False).asDouble())
+                        poseScopeNode.findPlug('opacity', False).setFloat(childDNFn.findPlug('opacity', False).asFloat())
+                        poseScopeNode.findPlug('hilightOpacity', False).setFloat(childDNFn.findPlug('hilightOpacity', False).asFloat())
+
                         OpenMaya.MGlobal.deleteNode(lastSelDagNode.child(i))
                 except:
                     pass
@@ -453,6 +458,8 @@ class Mnt_CreatePoseScopeShapeCmd(OpenMaya.MPxCommand):
             lastSelDagNode.addChild(self.poseScopeShapeObj, 0, False)
             OpenMaya.MGlobal.deleteNode(self.poseScopeDagNodeObj)
         # _________________________________________________________________
+
+        OpenMaya.MPxCommand.setResult(str(poseScopeNodePath))
 
         return
 # ______________________________
@@ -779,7 +786,7 @@ class Mnt_DeletePoseScopeCmd(OpenMaya.MPxCommand):
                     OpenMaya.MGlobal.deleteNode(child)      
 # _______________________________
 
-# Creates selectComponentsFromGroupNode command
+# Creates editPoseScopeComponents command
 class Mnt_editPoseScopeComponentsCmd(OpenMaya.MPxCommand):
     kPluginCmdName = 'editPoseScopeComponents'
 
@@ -886,8 +893,13 @@ class Mnt_editPoseScopeComponentsCmd(OpenMaya.MPxCommand):
                     break
         
         elif MObjDNFn.typeName == 'transform':
-            poseScopeNode = OpenMaya.MDagPath.getAPathTo(MObj).extendToShape().node()
-        
+            MdagNode = OpenMaya.MFnDagNode(MObj)
+
+            for i in range(0, MdagNode.childCount()):
+                if OpenMaya.MFnDependencyNode(MdagNode.child(i)).typeName == 'mnt_poseScope':
+                    poseScopeNode = MdagNode.child(i)
+                    break
+
         inputMeshPlug = OpenMaya.MFnDependencyNode(poseScopeNode).findPlug('inputMesh', False)
         connections = inputMeshPlug.connectedTo(True, False)
 
@@ -1020,7 +1032,31 @@ class Mnt_transfertPoseScopesCmd(OpenMaya.MPxCommand):
 
         OpenMaya.MGlobal.displayInfo('Posescopes transferred.')
         return
-# __________________________________
+# ___________________________________
+
+'''# Creates getPoseScopesInfosFromMeshCommand
+class Mnt_getPoseScopesInfosFromMeshCmd(OpenMaya.MPxCommand):
+    kPluginCmdName = 'getPoseScopesInfosFromMesh'
+
+    def __init__(self):
+        OpenMaya.MPxCommand.__init__(self)
+
+    @staticmethod
+    def creator():
+        return Mnt_getPoseScopesInfosFromMeshCmd()
+
+    def isUndoable(self):
+        return True
+
+    def doIt(self, *args):
+        self.redoIt()
+        return
+    
+    def redoIt(self):
+        listA = ['test', 100.01, 101, 102]
+        OpenMaya.MPxCommand.setResult(listA)
+        return
+# _________________________________________'''
 
 def initializePlugin(obj):
     plugin = OpenMaya.MFnPlugin(obj, 'Florian Delarque & Colin Bruneau', '1.4', 'Any')
@@ -1043,6 +1079,7 @@ def initializePlugin(obj):
         plugin.registerCommand(Mnt_DeletePoseScopeCmd.kPluginCmdName, Mnt_DeletePoseScopeCmd.creator)
         plugin.registerCommand(Mnt_editPoseScopeComponentsCmd.kPluginCmdName, Mnt_editPoseScopeComponentsCmd.creator)
         plugin.registerCommand(Mnt_transfertPoseScopesCmd.kPluginCmdName, Mnt_transfertPoseScopesCmd.creator)
+        '''plugin.registerCommand(Mnt_getPoseScopesInfosFromMeshCmd.kPluginCmdName, Mnt_getPoseScopesInfosFromMeshCmd.creator)'''
     except:
         OpenMaya.MGlobal.displayError('Failed to register createPoseScopeShape command.\n')
 
@@ -1068,5 +1105,6 @@ def uninitializePlugin(obj):
         plugin.deregisterCommand(Mnt_DeletePoseScopeCmd.kPluginCmdName)
         plugin.deregisterCommand(Mnt_editPoseScopeComponentsCmd.kPluginCmdName)
         plugin.deregisterCommand(Mnt_transfertPoseScopesCmd.kPluginCmdName)
+        '''plugin.deregisterCommand(Mnt_getPoseScopesInfosFromMeshCmd.kPluginCmdName)'''
     except:
         OpenMaya.MGlobal.displayError('Failed to deregister createPoseScopeShape command.\n')

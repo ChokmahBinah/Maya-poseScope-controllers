@@ -43,6 +43,7 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
     
     def __init__(self):
         OpenMayaUI.MPxLocatorNode.__init__(self)
+        self.BBox = OpenMaya.MBoundingBox()
 
     @staticmethod
     def creator():
@@ -52,9 +53,13 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
     def initialize():
         ''' Defines the input and output attributes as static variables in our plug-in class. '''
 
-        # input attribute.
+        # Input Attributes
+
+        # Creates needed function sets
         numericAttributeFn  = OpenMaya.MFnNumericAttribute()
         enumAttr            = OpenMaya.MFnEnumAttribute()
+        stringAttrFn        = OpenMaya.MFnTypedAttribute()
+        # ____________________________
 
         MntLocatorNode.sizeAttribute    = numericAttributeFn.create('size', 'size', OpenMaya.MFnNumericData.kFloat, 1)
         numericAttributeFn.writable     =  True 
@@ -114,8 +119,7 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         enumAttr.channelBox   = True
         MntLocatorNode.addAttribute(MntLocatorNode.iconMainAxis)
 
-        showHierarchicalLinksFn = OpenMaya.MFnNumericAttribute()
-        MntLocatorNode.showHierarchicalLinks= showHierarchicalLinksFn.create('show_hierarchical_links', 'show_hierarchical_links', OpenMaya.MFnNumericData.kBoolean, False)
+        MntLocatorNode.showHierarchicalLinks= numericAttributeFn.create('show_hierarchical_links', 'show_hierarchical_links', OpenMaya.MFnNumericData.kBoolean, False)
         numericAttributeFn.writable     = True 
         numericAttributeFn.keyable      = False
         numericAttributeFn.storable     = True 
@@ -123,13 +127,12 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         numericAttributeFn.channelBox   = True
         MntLocatorNode.addAttribute(MntLocatorNode.showHierarchicalLinks)
 
-        dottedLineFn = OpenMaya.MFnNumericAttribute()
-        MntLocatorNode.dottedLine = dottedLineFn.create('use_dotted_line', 'use_dotted_line', OpenMaya.MFnNumericData.kBoolean, False)
-        dottedLineFn.writable   = True 
-        dottedLineFn.keyable    = False
-        dottedLineFn.storable   = True
-        dottedLineFn.hidden     = False
-        dottedLineFn.channelBox = True
+        MntLocatorNode.dottedLine = numericAttributeFn.create('use_dotted_line', 'use_dotted_line', OpenMaya.MFnNumericData.kBoolean, False)
+        numericAttributeFn.writable   = True 
+        numericAttributeFn.keyable    = False
+        numericAttributeFn.storable   = True
+        numericAttributeFn.hidden     = False
+        numericAttributeFn.channelBox = True
         MntLocatorNode.addAttribute(MntLocatorNode.dottedLine)
 
         MntLocatorNode.dotsNumber = numericAttributeFn.create('dots_number', 'dots_number', OpenMaya.MFnNumericData.kInt, 5)
@@ -142,8 +145,7 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         numericAttributeFn.setMax(16)
         MntLocatorNode.addAttribute(MntLocatorNode.dotsNumber)
 
-        '''lineWidthFn = OpenMaya.MFnNumericAttribute()'''
-        MntLocatorNode.lineWidth = numericAttributeFn.create('line_width', 'line_width', OpenMaya.MFnNumericData.kFloat, 4)
+        MntLocatorNode.lineWidth = numericAttributeFn.create('line_width', 'line_width', OpenMaya.MFnNumericData.kInt, 4)
         numericAttributeFn.writable    = True
         numericAttributeFn.keyable     = True
         numericAttributeFn.storable    = True
@@ -153,16 +155,14 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         numericAttributeFn.setMax(16)
         MntLocatorNode.addAttribute(MntLocatorNode.lineWidth)
 
-        lineColorFn = OpenMaya.MFnNumericAttribute()
-        MntLocatorNode.lineColor = lineColorFn.createColor('line_color', 'line_color')
-        lineColorFn.writable     = True
-        lineColorFn.keyable      = False
-        lineColorFn.channelBox   = True
-        lineColorFn.storable     = True
-        lineColorFn.hidden       = False
+        MntLocatorNode.lineColor = numericAttributeFn.createColor('line_color', 'line_color')
+        numericAttributeFn.writable     = True
+        numericAttributeFn.keyable      = False
+        numericAttributeFn.channelBox   = True
+        numericAttributeFn.storable     = True
+        numericAttributeFn.hidden       = False
         MntLocatorNode.addAttribute(MntLocatorNode.lineColor)
 
-        stringAttrFn  = OpenMaya.MFnTypedAttribute()
         MntLocatorNode.labelAttribute = stringAttrFn.create('label', 'label', OpenMaya.MFnData.kString)
         stringAttrFn.writable = True
         stringAttrFn.readable = True
@@ -176,17 +176,21 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         numericAttributeFn.channelBox   = True
         MntLocatorNode.addAttribute(MntLocatorNode.interactiveRefresh)
 
+    def isBounded(self):
+        return True
+
+    def boundingBox(self):
+        return self.BBox
+
     def compute(self, plug, data):
-        if plug.attribute() == MntLocatorNode.iconType:
-            print('TEST DONE')  
-        return None
+        return
 
     def setDependentsDirty(self, plug, plugArray):
         if plug.attribute() == MntLocatorNode.iconType:
             iconMainAxisAttr = OpenMaya.MFnAttribute(MntLocatorNode.iconMainAxis)  
 
     def postConstructor(self):
-        return None
+        return
         
 class MntLocatorNodeData(OpenMaya.MUserData):
     def __init__(self):
@@ -286,7 +290,6 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
         worldMatrixTransform    = OpenMaya.MTransformationMatrix(worldMatrix)
         worldScale = worldMatrixTransform.scale(4)
 
-        # Find MObj transform children world matrices.
         data.pointArray  = OpenMaya.MPointArray()
 
         # Creates data for hierarchical line display.
@@ -299,40 +302,39 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
             try:
                 MFnDagParent = OpenMaya.MFnDagNode(MObjParentNode)
                 parentLocalMatrix   = MFnDagParent.transformationMatrix()    
+                '''parentShapePath     = MFnDagParent.getPath().extendToShape()'''
                 parentShapePath     = MFnDagParent.getPath().extendToShape()
 
                 MSelList.add(parentShapePath)
                 MObjParentShape = MSelList.getDependNode(0)
                 MFnDependencyNodeParentShape = OpenMaya.MFnDependencyNode(MObjParentShape)
 
-                if MFnDependencyNodeParentShape.typeName == 'mnt_locator':
-                    # Gets Local matrix
-                    localMatrix = MFnDagTransNode.transformationMatrix()
-                    # _________________
-
-                    # Gets Offset Matrix
-                    offsetMatrixAttr      = MFnDependencyParentNode.attribute('offsetParentMatrix')
-                    offsetMatrixPlug      = OpenMaya.MPlug(MObjParent, offsetMatrixAttr)
-                    offsetMatrixPlugObj   = offsetMatrixPlug.asMObject()
-                    offsetMatrixData      = OpenMaya.MFnMatrixData(offsetMatrixPlugObj)
-                    offsetMatrix          = offsetMatrixData.matrix()
-                    # ________________________
-
-                    # Calculates final matrix
-                    outputMatrix = localMatrix.__mul__(offsetMatrix).inverse()
-                    # _______________________
-    
-                    # Adds position to node data
-                    if data.dottedLine == False:
-                        data.pointArray.append(OpenMaya.MPoint(0,0,0))
-                        data.pointArray.append(OpenMaya.MPoint(outputMatrix[12], outputMatrix[13], outputMatrix[14]))
-                    else:
-                        dotsNumber = OpenMaya.MFnDependencyNode(MObj).findPlug('dots_number', False).asInt()
-                        for i in range(0, 2 * dotsNumber):
-                            u = float(i)/(2 * dotsNumber)
-                            point = OpenMaya.MPoint(u * outputMatrix[12], u * outputMatrix[13], u * outputMatrix[14])
-                            data.pointArray.append(point)
-                    # __________________________
+                '''if MFnDependencyNodeParentShape.typeName == 'mnt_locator':'''
+                # Gets Local matrix
+                localMatrix = MFnDagTransNode.transformationMatrix()
+                # _________________
+                # Gets Offset Matrix
+                offsetMatrixAttr      = MFnDependencyParentNode.attribute('offsetParentMatrix')
+                offsetMatrixPlug      = OpenMaya.MPlug(MObjParent, offsetMatrixAttr)
+                offsetMatrixPlugObj   = offsetMatrixPlug.asMObject()
+                offsetMatrixData      = OpenMaya.MFnMatrixData(offsetMatrixPlugObj)
+                offsetMatrix          = offsetMatrixData.matrix()
+                # ________________________
+                # Calculates final matrix
+                outputMatrix = localMatrix.__mul__(offsetMatrix).inverse()
+                # _______________________
+                 
+                # Adds position to node data
+                if data.dottedLine == False:
+                    data.pointArray.append(OpenMaya.MPoint(0,0,0))
+                    data.pointArray.append(OpenMaya.MPoint(outputMatrix[12], outputMatrix[13], outputMatrix[14]))
+                else:
+                    dotsNumber = OpenMaya.MFnDependencyNode(MObj).findPlug('dots_number', False).asInt()
+                    for i in range(0, 2 * dotsNumber):
+                        u = float(i)/(2 * dotsNumber)
+                        point = OpenMaya.MPoint(u * outputMatrix[12], u * outputMatrix[13], u * outputMatrix[14])
+                        data.pointArray.append(point)
+                # __________________________
             except:
                 pass
         # ___________________________________________
@@ -551,14 +553,14 @@ class Mnt_characterInfoNode(OpenMayaUI.MPxLocatorNode):
         stringAttrFn.hidden   = True
         Mnt_characterInfoNode.addAttribute(Mnt_characterInfoNode.spaceSwitchInfosAttr)
 
-        Mnt_characterInfoNode.marginAttr = numAttrFn.create('margin', 'margin', OpenMaya.MFnNumericData.kInt, 100)
+        Mnt_characterInfoNode.marginAttr = numAttrFn.create('margin', 'margin', OpenMaya.MFnNumericData.kInt, 0)
         numAttrFn.writable = True
         numAttrFn.readable = True
         numAttrFn.setMin(40)
         numAttrFn.setMax(300)
         Mnt_characterInfoNode.addAttribute(Mnt_characterInfoNode.marginAttr)
 
-        Mnt_characterInfoNode.fontSizeAttr  = numAttrFn.create('fontSize', 'fontSize', OpenMaya.MFnNumericData.kInt, 12)
+        Mnt_characterInfoNode.fontSizeAttr  = numAttrFn.create('fontSize', 'fontSize', OpenMaya.MFnNumericData.kInt, 16)
         numAttrFn.writable = True
         numAttrFn.readable = True
         numAttrFn.setMin(9)
@@ -584,6 +586,11 @@ class Mnt_characterInfoNode(OpenMayaUI.MPxLocatorNode):
 
     def compute(self, plug, data): 
         return
+
+    def postConstructor(self):
+        charInfoNodeObj = self.thisMObject()
+        print(self.name())
+        return True
 
 class Mnt_characterInfoNodeData(OpenMaya.MUserData):
     def __init__(self):
@@ -665,14 +672,14 @@ class Mnt_characterInfoNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
 
         drawManager.beginDrawable(OpenMayaRender.MUIDrawManager.kSelectable)
         drawManager.setFontWeight(87)
-        drawManager.setFontSize(data.fontSize * 2)
+        drawManager.setFontSize(data.fontSize * 1)
         drawManager.setColor(OpenMaya.MColor((1.0, 0.75, 0.333, 0.5)))
-        drawManager.text2d(OpenMaya.MPoint(data.rightInfosPos[0], data.characterNamePos[1]), 'Pose Scopes Visibility :', OpenMayaRender.MUIDrawManager.kRight, None, None, False)
+        drawManager.text2d(OpenMaya.MPoint(data.rightInfosPos[0] - 50, data.characterNamePos[1]), 'Pose Scopes Visibility :', OpenMayaRender.MUIDrawManager.kRight, None, None, False)
         drawManager.setColor(OpenMaya.MColor((0.5, 0.5, 0.5, 0.5)))      
-        drawManager.text2d(OpenMaya.MPoint(data.rightInfosPos[0], data.characterNamePos[1] -  data.fontSize * 3), str(data.poseScopeVisibilityState), OpenMayaRender.MUIDrawManager.kRight, None, None, False)
-        drawManager.setTexture(None)
-        drawManager.setColor(OpenMaya.MColor((0.5, 0.5, 0.5, 0.01)))
-        drawManager.rect2d(OpenMaya.MPoint(data.rightInfosPos[0] - 13 * data.fontSize, data.characterNamePos[1]), OpenMaya.MVector(0,1), 14 * data.fontSize, 4 * data.fontSize, True)
+        drawManager.text2d(OpenMaya.MPoint(data.rightInfosPos[0] - 50, data.characterNamePos[1] -  data.fontSize * 2), str(data.poseScopeVisibilityState), OpenMayaRender.MUIDrawManager.kRight, None, None, False)
+        #drawManager.setTexture(None)
+        #drawManager.setColor(OpenMaya.MColor((0.5, 0.5, 0.5, 0.01)))
+        #drawManager.rect2d(OpenMaya.MPoint(data.rightInfosPos[0] - 13 * data.fontSize, data.characterNamePos[1]), OpenMaya.MVector(0,1), 14 * data.fontSize, 4 * data.fontSize, True)
         drawManager.endDrawable()
 
         if data.mnt_characterInfosVisibilityState == False:
@@ -681,7 +688,7 @@ class Mnt_characterInfoNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
         drawManager.beginDrawable(OpenMayaRender.MUIDrawManager.kSelectable)
         drawManager.setColor(data.color)        
         drawManager.setFontWeight(87)
-        drawManager.setFontSize(data.fontSize * 2)
+        drawManager.setFontSize(data.fontSize * 1)
         drawManager.text2d(data.characterNamePos, 'Character : ' + data.characterName, OpenMayaRender.MUIDrawManager.kLeft, None, None, False)
         drawManager.setTexture(data.charactertexture)
         drawManager.rect2d(OpenMaya.MPoint(data.characterNamePos[0] + 64, data.characterNamePos[1] - 50), OpenMaya.MVector(0,1), 64, 40, True)
