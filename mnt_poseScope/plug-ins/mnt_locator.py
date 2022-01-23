@@ -26,7 +26,7 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
     drawDbClassification    = "drawdb/geometry/MntLocatorNode"
     drawRegistrantId        = "MntLocatorNodePlugin"
 
-    iconFolder              = cmds.getModulePath(moduleName = 'mnt_framework') + '/icons/mntLocators/'
+    iconFolder              = cmds.getModulePath(moduleName = 'mnt_poseScope') + '/icons/mntLocators/'
     iconType                = OpenMaya.MObject()
     iconMainAxis            = OpenMaya.MObject()
     sizeAttribute           = OpenMaya.MObject()

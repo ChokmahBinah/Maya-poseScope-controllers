@@ -70,7 +70,10 @@ class MntCustomShelf(_shelf):
         crScriptPath = cmds.getModulePath(moduleName = 'mnt_poseScope') + '/scripts/'
 
         self.addButton(label = '', icon = 'mntController.png', enable = True, ann = 'Create Mnt Locator Node', command = 'cmds.createNode(\'mnt_locator\')')
-        self.addButton(label = '', icon = 'mnt_CreatePoseScope.png', enable = True, command = 'import maya.cmds as cmds\ncmds.createPoseScopeShape()', ann = 'Creates an mnt_poseScope node')
+
+        self.addButton(label = '', icon = 'mnt_createPoseScope.png', enable = True, command = 'import mnt_poseScopeUI\nposeScopeUI = mnt_poseScopeUI.mnt_poseScopeUI()',\
+            ann = 'Opens Mnt_poseScopes Editor')
+
         self.addSymbolCheckBox(icon = 'mnt_poseTool.png', enable = True, onCommand = 'import mnt_poseTool as mnt_poseTool\nposeTool = mnt_poseTool.mnt_DynSelection()', offCommand = 'poseTool.__del__()')
         self.addButton(label = '', icon = 'mnt_togglePoseScopeVisibility.png', enable = True, command = 'import maya.cmds as cmds\ncmds.togglePoseScopeShapesVisibility()')
 
