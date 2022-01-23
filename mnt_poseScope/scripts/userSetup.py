@@ -17,7 +17,10 @@ cmds.evalDeferred('mnt_poseScopeShelf.MntCustomShelf(\'mnt_poseScope\')')
 # ________________________________________________
 
 # Adds custom shapes to cached playback evaluation
-cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mntLocator\', newAction=\'enableEvaluationCache\')')
+cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction=\'enableEvaluationCache\')')
+cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction = \'enableVP2Cache\', newActionParam = \'useHardware=0\')')
+cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction = \'enableVP2Cache\', newActionParam = \'useHardware=1\')')
+
 cmds.evalDeferred('cmds.cacheEvaluator(newFilter=\'nodeTypes\', newFilterParam = \'types=+mnt_poseScope\' , newAction = \'enableEvaluationCache\')')
 cmds.evalDeferred('cmds.cacheEvaluator(newFilter=\'nodeTypes\', newFilterParam = \'types=+mnt_poseScope\' , newAction = \'enableVP2Cache\', newActionParam = \'useHardware=0\')')
 cmds.evalDeferred('cmds.cacheEvaluator(newFilter=\'nodeTypes\', newFilterParam = \'types=+mnt_poseScope\' , newAction = \'enableVP2Cache\', newActionParam = \'useHardware=1\')')

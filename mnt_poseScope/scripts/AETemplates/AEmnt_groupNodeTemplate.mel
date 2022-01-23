@@ -7,7 +7,9 @@ global proc AEmnt_groupNodeTemplate(string $nodeName)
         editorTemplate -label "Component" - addControl "component";
         editorTemplate -label "Components List" - addControl "componentsList";
 
-		editorTemplate -callCustom "AEmnt_groupNode_addFromSelection" "AEmnt_groupNode_addFromSelectionEdit" $nodeName;		
+		editorTemplate -callCustom "AEmnt_groupNode_addFromSelection" "AEmnt_groupNode_addFromSelectionEdit" $nodeName;
+		//I should add a button to get components selection from component list. The components tags seem to do it.
+		editorTemplate -callCustom "AEmnt_groupNode_getSelectionFromComponentsList" "AEmnt_groupNode_getSelectionFromComponentsListEdit" $nodeName;
 		editorTemplate -endLayout;
 
 	// include/call base class/node attributes
@@ -17,6 +19,7 @@ global proc AEmnt_groupNodeTemplate(string $nodeName)
 	editorTemplate -endScrollLayout;
 }
 
+// Get Component List From Selection
 global proc AEmnt_groupNode_addFromSelection(string $nodeNameArr)
 {	
 	string $buffer[];
@@ -70,3 +73,43 @@ global proc componentListFromSelection(string $nodeName)
 
 	setAttr -type "string" ($nodeName + ".componentsList") $string[0];
 }
+// _________________________________
+
+// Get Selection From Component List
+global proc AEmnt_groupNode_getSelectionFromComponentsList(string $nodeNameAttr)
+{
+	string $buffer[];
+	tokenize($nodeNameAttr,".",$buffer);
+	string $nodeName = $buffer[0];
+
+	setUITemplate -pst attributeEditorTemplate;
+
+    rowLayout -nc 2;
+    text -l "";
+	button -label "Get Selection From Component List"  -c ("selectionFromComponentList(\"" + $nodeName + "\");") -width 217 getSelectionFromComponentListButton;
+	setParent ..;
+
+	setUITemplate -ppt;
+}
+
+global proc AEmnt_groupNode_getSelectionFromComponentsListEdit(string $nodeNameAttr)
+{
+	string $buffer[];
+	tokenize($nodeNameAttr,".",$buffer);
+	string $nodeName = $buffer[0];
+
+	setUITemplate -pst attributeEditorTemplate;
+
+	button -e -c ("selectionFromComponentList(\"" + $nodeName + "\");") getSelectionFromComponentListButton;
+	setUITemplate -ppt;
+}
+
+global proc selectionFromComponentList(string $nodeName)
+{
+	//string $componentsListStr = `getAttr($nodeName + ".componentsList")`;
+	//string $list[];
+	//$list = `python("\"" + $componentsListStr + "\".split()")`;
+	//select -r $nodeName;
+	editPoseScopeComponents;
+}
+// _________________________________
