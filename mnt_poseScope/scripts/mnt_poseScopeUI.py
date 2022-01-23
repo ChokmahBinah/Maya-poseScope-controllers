@@ -8,7 +8,7 @@ class mnt_poseScopeUI():
         self.buildUI()
 
     def buildUI(self):
-        iconPath = cmds.getModulePath(moduleName = 'mnt_framework') + '/icons/mntShelf/'
+        iconPath = cmds.getModulePath(moduleName = 'mnt_poseScope') + '/icons/mntShelf/'
         windowwidth = 200
 
         if cmds.workspaceControl('mnt_poseScopes_editor', ex = True):
