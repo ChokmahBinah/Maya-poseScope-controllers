@@ -49,10 +49,10 @@ class Mnt_poseScopeNode(OpenMaya.MPxSurfaceShape):
         Mnt_poseScopeNode.addAttribute(Mnt_poseScopeNode.inMeshObjAttr)
 
         Mnt_poseScopeNode.fsInputMeshChanged = numericAttributeFn.create('inputMeshChangedSinceUpdate', 'inputMeshChangedSinceUpdate', OpenMaya.MFnNumericData.kBoolean, False)
-        numericAttributeFn.storable     = False#
-        numericAttributeFn.hidden       = True#
-        numericAttributeFn.connectable  = False#
-        Mnt_poseScopeNode.addAttribute(Mnt_poseScopeNode.fsInputMeshChanged)#
+        numericAttributeFn.storable     = False
+        numericAttributeFn.hidden       = True
+        numericAttributeFn.connectable  = False
+        Mnt_poseScopeNode.addAttribute(Mnt_poseScopeNode.fsInputMeshChanged)
 
         Mnt_poseScopeNode.colorAttribute = numericAttributeFn.createColor('color', 'color')
         numericAttributeFn.writable     = True
@@ -96,9 +96,6 @@ class Mnt_poseScopeNode(OpenMaya.MPxSurfaceShape):
         numericAttributeFn.hidden       = False
         numericAttributeFn.keyable = False        
         Mnt_poseScopeNode.addAttribute(Mnt_poseScopeNode.interactiveDisplayAttribute)
-
-        # Cette ligne peut effectivement etre enlevee. Elle semble corriger un lag du playback cache que j'avais auparavant.
-        #Mnt_poseScopeNode.attributeAffects(Mnt_poseScopeNode.inMeshObjAttr, Mnt_poseScopeNode.inMeshObjAttr)
 
     def isBounded(self):
         return True
@@ -327,7 +324,7 @@ class Mnt_poseScopeDrawOverride(OpenMayaRender.MPxDrawOverride):
             if data.xRayMode == True:
                 drawManager.beginDrawInXray()
             
-            drawManager.setDepthPriority(20)
+            drawManager.setDepthPriority(21)
             drawManager.setColor(OpenMaya.MColor((data.shaderColor[0], data.shaderColor[1], data.shaderColor[2], data.shaderOpacity)))
             drawManager.mesh(OpenMayaRender.MUIDrawManager.kTriangles, self.poseScopeShapePointsArray, None, None, self.poseScopeShapeIndexArray, None)
             
@@ -807,11 +804,18 @@ class Mnt_editPoseScopeComponentsCmd(OpenMaya.MPxCommand):
     def redoIt(self):
         MSelectionList  = OpenMaya.MSelectionList()
         MActiveList     = OpenMaya.MGlobal.getActiveSelectionList()
+
+        if MActiveList.length() == 0:
+            return
+
         MObj            = MActiveList.getDependNode(0)
 
         MposeScopeMeshObj   = self.get_poseScopeMesh()
         MGroupNodeObj       = self.get_groupNode()
         MTransformNode      = self.get_transformNode()
+
+        if not MGroupNodeObj:
+            return
 
         nodeDNFn                = OpenMaya.MFnDependencyNode(MGroupNodeObj)
         outputsComponentPlug    = nodeDNFn.findPlug('outputsComponent', False)
@@ -899,6 +903,9 @@ class Mnt_editPoseScopeComponentsCmd(OpenMaya.MPxCommand):
                 if OpenMaya.MFnDependencyNode(MdagNode.child(i)).typeName == 'mnt_poseScope':
                     poseScopeNode = MdagNode.child(i)
                     break
+        
+        if not poseScopeNode:
+             return
 
         inputMeshPlug = OpenMaya.MFnDependencyNode(poseScopeNode).findPlug('inputMesh', False)
         connections = inputMeshPlug.connectedTo(True, False)
@@ -1033,30 +1040,6 @@ class Mnt_transfertPoseScopesCmd(OpenMaya.MPxCommand):
         OpenMaya.MGlobal.displayInfo('Posescopes transferred.')
         return
 # ___________________________________
-
-'''# Creates getPoseScopesInfosFromMeshCommand
-class Mnt_getPoseScopesInfosFromMeshCmd(OpenMaya.MPxCommand):
-    kPluginCmdName = 'getPoseScopesInfosFromMesh'
-
-    def __init__(self):
-        OpenMaya.MPxCommand.__init__(self)
-
-    @staticmethod
-    def creator():
-        return Mnt_getPoseScopesInfosFromMeshCmd()
-
-    def isUndoable(self):
-        return True
-
-    def doIt(self, *args):
-        self.redoIt()
-        return
-    
-    def redoIt(self):
-        listA = ['test', 100.01, 101, 102]
-        OpenMaya.MPxCommand.setResult(listA)
-        return
-# _________________________________________'''
 
 def initializePlugin(obj):
     plugin = OpenMaya.MFnPlugin(obj, 'Florian Delarque & Colin Bruneau', '1.4', 'Any')
