@@ -71,7 +71,7 @@ class MntCustomShelf(_shelf):
 
         self.addButton(label = '', icon = 'mntController.png', enable = True, ann = 'Create Mnt Locator Node', command = 'cmds.createNode(\'mnt_locator\')')
 
-        self.addButton(label = '', icon = 'mnt_createPoseScope.png', enable = True, command = 'import mnt_poseScopeUI\nposeScopeUI = mnt_poseScopeUI.mnt_poseScopeUI()',\
+        self.addButton(label = '', icon = 'mnt_poseScopeEditor.png', enable = True, command = 'import mnt_poseScopeUI\nposeScopeUI = mnt_poseScopeUI.mnt_poseScopeUI()',\
             ann = 'Opens Mnt_poseScopes Editor')
 
         self.addSymbolCheckBox(icon = 'mnt_poseTool.png', enable = True, onCommand = 'import mnt_poseTool as mnt_poseTool\nposeTool = mnt_poseTool.mnt_DynSelection()', offCommand = 'poseTool.__del__()')

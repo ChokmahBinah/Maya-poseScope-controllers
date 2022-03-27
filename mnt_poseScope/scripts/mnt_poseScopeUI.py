@@ -11,13 +11,13 @@ class mnt_poseScopeUI():
         iconPath = cmds.getModulePath(moduleName = 'mnt_poseScope') + '/icons/mntShelf/'
         windowwidth = 200
 
-        if cmds.workspaceControl('mnt_poseScopes_editor', ex = True):
-            cmds.deleteUI('mnt_poseScopes_editor')
+        if cmds.workspaceControl('mnt_poseScope_editor', ex = True):
+            cmds.deleteUI('mnt_poseScope_editor')
         
-        cmds.workspaceControl('mnt_poseScopes_editor', w = windowwidth, r = True, clp = False)
+        cmds.workspaceControl('mnt_poseScope_editor', w = windowwidth, r = True, clp = False)
         
         cmds.columnLayout(adj = True)
-        cmds.text('Mnt poseScopes Editor', fn = 'boldLabelFont', h = 32, ebg = True, bgc = (0.15, 0.15, 0.15))
+        cmds.text('Mnt poseScope Editor', fn = 'boldLabelFont', h = 32, ebg = True, bgc = (0.15, 0.15, 0.15))
         cmds.paneLayout('mntDenoiseToolPane', cn = 'vertical2')
 
         cmds.columnLayout(adj = True)
@@ -62,9 +62,19 @@ class mnt_poseScopeUI():
             ctrlShape = cmds.listRelatives(cmds.scriptTable('table', q = True, cellIndex = (row, 1), cellValue = True), s = True)[0]
         except:
             return
-            
-        color = cmds.getAttr(ctrlShape + '.color')[0]
-        opacity = cmds.getAttr(ctrlShape + '.opacity') + 0.1
+
+        try:    
+            color = cmds.getAttr(ctrlShape + '.color')[0]
+        except:
+            pass
+
+        try:
+            opacity = cmds.getAttr(ctrlShape + '.opacity') + 0.1
+        except:
+            try:
+                opacity = cmds.getAttr(ctrlShape + '.opacity')[0] + 0.1
+            except:
+                return
 
         if column == 1:
             return (color[0] * 255 * opacity + 64, color[1] * 255 * opacity + 64, color[2] * 255 * opacity + 64)
@@ -128,6 +138,10 @@ class mnt_poseScopeUI():
         outputFaceCompList  = []
         outputColorList      = []
         MSelectionList      = OpenMaya.MGlobal.getActiveSelectionList()
+        
+        if MSelectionList.length() == 0:
+            return
+
         MObj                = MSelectionList.getDependNode(0)
         shapePath           = OpenMaya.MFnDagNode(MObj).getPath().extendToShape()
 
@@ -173,20 +187,20 @@ class mnt_poseScopeUI():
                 outputCtrlList.append(parentTransformName)
                 # ____________________________________
 
-                # Finds connected groupNode face component list
+                # Finds input faces components as string
                 inputFacesPlug = OpenMaya.MFnDependencyNode(node).findPlug('inputFaceComponents', False)
-                plugConnections = inputFacesPlug.connectedTo(True, False)
+                componentsListData = OpenMaya.MFnComponentListData(inputFacesPlug.asMObject())
+                
+                string = ''
 
-                for iPlug in plugConnections:
-                    node = iPlug.node()
-                    nodeDN = OpenMaya.MFnDependencyNode(node)
+                for i in range(componentsListData.length()):
+                    component = componentsListData.get(i)
+                    singleIndexedComponent = OpenMaya.MFnSingleIndexedComponent(component)
                     
-                    if nodeDN.typeName == 'mnt_groupNode':
-                        componentsListPlug = nodeDN.findPlug('componentsList', False)
-                        componentsListValue = componentsListPlug.asString()
-                        outputFaceCompList.append(componentsListValue)
-                        break
-                # _____________________________________________
+                    string = string + ' ' + str(singleIndexedComponent.getElements()).replace('[', '').replace(']', '').replace(',', '')
+
+                outputFaceCompList.append(string[1 : len(string)])
+                # ______________________________________
             else:
                 pass
         
@@ -196,6 +210,9 @@ class mnt_poseScopeUI():
         outputFolder = cmds.workspace(q = True, active = True) + '/data/poseScopes_infos/'
 
         poseScopeInfos = self.getPoseScopesInfos()
+        if poseScopeInfos == None:
+            OpenMaya.MGlobal.displayError('Please select a polySurface mesh before using this command.')
+            return
 
         # Creates a json object
         json_obj = {}
@@ -232,10 +249,6 @@ class mnt_poseScopeUI():
 
     def importPoseScopeInfos(self, *args):
         outputFolder = cmds.workspace(q = True, active = True) + '/data/poseScopes_infos/'
-        '''fileName        = cmds.file(q = True, sn = True, shn = True)
-        fullFileName    = cmds.file(q = True, sn = True)
-        filePath        = fullFileName.replace(fileName, '')'''
-
         poseScopesFile = cmds.fileDialog2(caption = 'Import poseScopes', dialogStyle = 2, fm = 1, okCaption = 'Import', dir = cmds.workspace(q = True, active = True) + '/data/')
         
         if not poseScopesFile:

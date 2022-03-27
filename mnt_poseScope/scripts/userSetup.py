@@ -18,15 +18,15 @@ cmds.evalDeferred('mnt_poseScopeShelf.MntCustomShelf(\'mnt_poseScope\')')
 # ________________________________________________
 
 # Adds custom shapes to cached playback evaluation
-cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction=\'enableEvaluationCache\')')
-cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction = \'enableVP2Cache\', newActionParam = \'useHardware=0\')')
-cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction = \'enableVP2Cache\', newActionParam = \'useHardware=1\')')
+#cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction=\'enableEvaluationCache\')')
+#cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction = \'enableVP2Cache\', newActionParam = \'useHardware=0\')')
+#cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction = \'enableVP2Cache\', newActionParam = \'useHardware=1\')')
 # ________________________________________________
 
 # Adds custom buttons to ToolBox
 def addCustomToolBoxButtons():
     gToolBox = mel.eval('$tmpVar=$gToolBox')
-    iconPath = cmds.getModulePath(moduleName = 'mnt_framework') + '/icons/mntShelf/'
+    iconPath = cmds.getModulePath(moduleName = 'mnt_poseScope') + '/icons/mntShelf/'
 
     if cmds.symbolCheckBox('mnt_poseTool', q = True, ex =True) == True:
         cmds.deleteUI('mnt_poseTool')

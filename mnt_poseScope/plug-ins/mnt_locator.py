@@ -1,30 +1,25 @@
-import sys
+from ctypes import sizeof
 import math
+from tkinter.filedialog import Open
 import maya.cmds as cmds
 import maya.api.OpenMaya as OpenMaya
 import maya.api.OpenMayaUI as OpenMayaUI
 import maya.api.OpenMayaAnim as OpenMayaAnim
 import maya.api.OpenMayaRender as OpenMayaRender
-import maya.plugin.evaluator.CacheEvaluatorManager #To help use cached playback
+'''import maya.plugin.evaluator.CacheEvaluatorManager #To help use cached playback -> and I should not use it !'''
 
 maya_useNewAPI = True
-
-'''def maya_useNewAPI():
- """
- The presence of this function tells Maya that the plugin produces, and
- expects to be passed, objects created using the Maya Python API 2.0.
- """
- pass'''
 
 class MyTextureManager(OpenMayaRender.MTextureManager):#A Faire quand une classe ne peux pas etre instanciee (est une classe abstraite), on doit cree une classe derivee
     def __init__(self):
         pass
 
-class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
+class Mnt_locatorNode(OpenMayaUI.MPxLocatorNode):
     kPluginNodeName         = 'mnt_locator' #Name of the node.
     id                      = OpenMaya.MTypeId( 0xDAE2 ) # A unique ID associated to this node type.
-    drawDbClassification    = "drawdb/geometry/MntLocatorNode"
-    drawRegistrantId        = "MntLocatorNodePlugin"
+    drawDbClassification    = "drawdb/geometry/Mnt_locatorNode"
+    #drawDbClassification    = "drawdb/subscene/Mnt_locatorNode"
+    drawRegistrantId        = "Mnt_locatorNodePlugin"
 
     iconFolder              = cmds.getModulePath(moduleName = 'mnt_poseScope') + '/icons/mntLocators/'
     iconType                = OpenMaya.MObject()
@@ -40,14 +35,17 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
     dottedLine              = OpenMaya.MObject()
     dotsNumber              = OpenMaya.MObject()
     interactiveRefresh      = OpenMaya.MObject()
-    
+
+    isInteractive           = True
+    doRefresh               = True
+
     def __init__(self):
         OpenMayaUI.MPxLocatorNode.__init__(self)
         self.BBox = OpenMaya.MBoundingBox()
 
     @staticmethod
     def creator():
-        return MntLocatorNode()
+        return Mnt_locatorNode()
  
     @staticmethod
     def initialize():
@@ -61,7 +59,7 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         stringAttrFn        = OpenMaya.MFnTypedAttribute()
         # ____________________________
 
-        MntLocatorNode.sizeAttribute    = numericAttributeFn.create('size', 'size', OpenMaya.MFnNumericData.kFloat, 1)
+        Mnt_locatorNode.sizeAttribute    = numericAttributeFn.create('size', 'size', OpenMaya.MFnNumericData.kFloat, 1)
         numericAttributeFn.writable     =  True 
         numericAttributeFn.keyable      = False
         numericAttributeFn.storable     =  True 
@@ -69,25 +67,25 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         numericAttributeFn.channelBox   = True
         numericAttributeFn.setMin( 0.01 )
         numericAttributeFn.setMax( 100.0 )
-        MntLocatorNode.addAttribute(MntLocatorNode.sizeAttribute)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.sizeAttribute)
 
-        MntLocatorNode.areaVisibility   = numericAttributeFn.create('area_Visibility', 'area_Visibility', OpenMaya.MFnNumericData.kBoolean, False)
+        Mnt_locatorNode.areaVisibility   = numericAttributeFn.create('area_Visibility', 'area_Visibility', OpenMaya.MFnNumericData.kBoolean, False)
         numericAttributeFn.writable     =  True 
         numericAttributeFn.keyable      = False
         numericAttributeFn.storable     =  True 
         numericAttributeFn.hidden       = False
         numericAttributeFn.channelBox   = True
-        MntLocatorNode.addAttribute(MntLocatorNode.areaVisibility)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.areaVisibility)
 
-        MntLocatorNode.colorAttribute = numericAttributeFn.createColor('color', 'color')
+        Mnt_locatorNode.colorAttribute = numericAttributeFn.createColor('color', 'color')
         numericAttributeFn.writable     = True
         numericAttributeFn.keyable      = False
         numericAttributeFn.channelBox   = True
         numericAttributeFn.storable     = True
         numericAttributeFn.hidden       = False
-        MntLocatorNode.addAttribute(MntLocatorNode.colorAttribute)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.colorAttribute)
 
-        MntLocatorNode.opacityAttribute = numericAttributeFn.create('opacity', 'opacity', OpenMaya.MFnNumericData.kFloat, 1.0)
+        Mnt_locatorNode.opacityAttribute = numericAttributeFn.create('opacity', 'opacity', OpenMaya.MFnNumericData.kFloat, 1.0)
         numericAttributeFn.writable     = True
         numericAttributeFn.keyable      = False
         numericAttributeFn.channelBox   = True
@@ -95,9 +93,9 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         numericAttributeFn.hidden       = False
         numericAttributeFn.setMin(0.0)
         numericAttributeFn.setMax(1.0)
-        MntLocatorNode.addAttribute(MntLocatorNode.opacityAttribute)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.opacityAttribute)
 
-        MntLocatorNode.iconType = enumAttr.create('iconType', 'it', 1)
+        Mnt_locatorNode.iconType = enumAttr.create('iconType', 'it', 1)
         enumAttr.addField('Bone', 0)
         enumAttr.addField('Circle', 1)
         enumAttr.addField('Square', 2)
@@ -109,33 +107,33 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         enumAttr.addField('Circle3D', 8)
         enumAttr.hidden     = False
         enumAttr.channelBox = True
-        MntLocatorNode.addAttribute(MntLocatorNode.iconType)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.iconType)
 
-        MntLocatorNode.iconMainAxis = enumAttr.create('iconMainAxis', 'ima', 0)
+        Mnt_locatorNode.iconMainAxis = enumAttr.create('iconMainAxis', 'ima', 0)
         enumAttr.addField('X', 0)
         enumAttr.addField('Y', 1)
         enumAttr.addField('Z', 2)
         enumAttr.hidden       = True
         enumAttr.channelBox   = True
-        MntLocatorNode.addAttribute(MntLocatorNode.iconMainAxis)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.iconMainAxis)
 
-        MntLocatorNode.showHierarchicalLinks= numericAttributeFn.create('show_hierarchical_links', 'show_hierarchical_links', OpenMaya.MFnNumericData.kBoolean, False)
+        Mnt_locatorNode.showHierarchicalLinks= numericAttributeFn.create('show_hierarchical_links', 'show_hierarchical_links', OpenMaya.MFnNumericData.kBoolean, False)
         numericAttributeFn.writable     = True 
         numericAttributeFn.keyable      = False
         numericAttributeFn.storable     = True 
         numericAttributeFn.hidden       = False
         numericAttributeFn.channelBox   = True
-        MntLocatorNode.addAttribute(MntLocatorNode.showHierarchicalLinks)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.showHierarchicalLinks)
 
-        MntLocatorNode.dottedLine = numericAttributeFn.create('use_dotted_line', 'use_dotted_line', OpenMaya.MFnNumericData.kBoolean, False)
+        Mnt_locatorNode.dottedLine = numericAttributeFn.create('use_dotted_line', 'use_dotted_line', OpenMaya.MFnNumericData.kBoolean, False)
         numericAttributeFn.writable   = True 
         numericAttributeFn.keyable    = False
         numericAttributeFn.storable   = True
         numericAttributeFn.hidden     = False
         numericAttributeFn.channelBox = True
-        MntLocatorNode.addAttribute(MntLocatorNode.dottedLine)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.dottedLine)
 
-        MntLocatorNode.dotsNumber = numericAttributeFn.create('dots_number', 'dots_number', OpenMaya.MFnNumericData.kInt, 5)
+        Mnt_locatorNode.dotsNumber = numericAttributeFn.create('dots_number', 'dots_number', OpenMaya.MFnNumericData.kInt, 5)
         numericAttributeFn.writable   = True 
         numericAttributeFn.keyable    = False
         numericAttributeFn.storable   = True
@@ -143,38 +141,47 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         numericAttributeFn.channelBox = True
         numericAttributeFn.setMin(1)
         numericAttributeFn.setMax(16)
-        MntLocatorNode.addAttribute(MntLocatorNode.dotsNumber)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.dotsNumber)
 
-        MntLocatorNode.lineWidth = numericAttributeFn.create('line_width', 'line_width', OpenMaya.MFnNumericData.kInt, 4)
+        Mnt_locatorNode.lineWidth = numericAttributeFn.create('line_width', 'line_width', OpenMaya.MFnNumericData.kInt, 4)
         numericAttributeFn.writable    = True
         numericAttributeFn.keyable     = True
         numericAttributeFn.storable    = True
         numericAttributeFn.hidden      = False
         numericAttributeFn.channelBox  = True
         numericAttributeFn.setMin(1)
-        numericAttributeFn.setMax(16)
-        MntLocatorNode.addAttribute(MntLocatorNode.lineWidth)
+        numericAttributeFn.setMax(32)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.lineWidth)
 
-        MntLocatorNode.lineColor = numericAttributeFn.createColor('line_color', 'line_color')
+        Mnt_locatorNode.lineColor = numericAttributeFn.createColor('line_color', 'line_color')
         numericAttributeFn.writable     = True
         numericAttributeFn.keyable      = False
         numericAttributeFn.channelBox   = True
         numericAttributeFn.storable     = True
         numericAttributeFn.hidden       = False
-        MntLocatorNode.addAttribute(MntLocatorNode.lineColor)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.lineColor)
 
-        MntLocatorNode.labelAttribute = stringAttrFn.create('label', 'label', OpenMaya.MFnData.kString)
+        Mnt_locatorNode.labelAttribute = stringAttrFn.create('label', 'label', OpenMaya.MFnData.kString)
         stringAttrFn.writable = True
         stringAttrFn.readable = True
-        MntLocatorNode.addAttribute(MntLocatorNode.labelAttribute)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.labelAttribute)
 
-        MntLocatorNode.interactiveRefresh = numericAttributeFn.create('interactiveRefresh', 'ir', OpenMaya.MFnNumericData.kBoolean, True)
+        Mnt_locatorNode.interactiveRefresh = numericAttributeFn.create('interactiveRefresh', 'ir', OpenMaya.MFnNumericData.kBoolean, True)
         numericAttributeFn.writable     = True 
         numericAttributeFn.keyable      = False
         numericAttributeFn.storable     = True 
         numericAttributeFn.hidden       = False
         numericAttributeFn.channelBox   = True
-        MntLocatorNode.addAttribute(MntLocatorNode.interactiveRefresh)
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.interactiveRefresh)
+
+        Mnt_locatorNode.xRayModeAttribute = numericAttributeFn.create('xRayMode', 'xRayMode', OpenMaya.MFnNumericData.kBoolean, False)
+        numericAttributeFn.writable     = True
+        numericAttributeFn.channelBox   = True
+        numericAttributeFn.storable     = True
+        numericAttributeFn.hidden       = False
+        numericAttributeFn.keyable = False        
+        Mnt_locatorNode.addAttribute(Mnt_locatorNode.xRayModeAttribute)
+
 
     def isBounded(self):
         return True
@@ -186,35 +193,52 @@ class MntLocatorNode(OpenMayaUI.MPxLocatorNode):
         return
 
     def setDependentsDirty(self, plug, plugArray):
-        if plug.attribute() == MntLocatorNode.iconType:
-            iconMainAxisAttr = OpenMaya.MFnAttribute(MntLocatorNode.iconMainAxis)  
+        '''thisNodeName = OpenMaya.MFnDependencyNode(self.thisMObject()).name()
+
+        if plug.attribute() == Mnt_locatorNode.iconType:
+            iconMainAxisAttr = OpenMaya.MFnAttribute(Mnt_locatorNode.iconMainAxis)  
+        
+        if plug.attribute() == Mnt_locatorNode.interactiveRefresh:
+            if plug.asBool() == False:
+                self.isInteractive = True
+            else:
+                self.isInteractive = False
+        
+        if plug.name() == thisNodeName + '.localPositionX' or plug.name() == thisNodeName + '.localPositionY' or plug.name() == thisNodeName + '.localPositionZ':
+            print('TEST')'''
 
     def postConstructor(self):
         return
         
-class MntLocatorNodeData(OpenMaya.MUserData):
+# MPxDrawOverride implementation
+class Mnt_locatorNodeData(OpenMaya.MUserData):
     def __init__(self):
         OpenMaya.MUserData.__init__(self, False) ## don't delete after draw
- 
-class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
+
+class Mnt_locatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
     @staticmethod
     def creator(obj):
-        return MntLocatorNodeDrawOverride(obj)
+        return Mnt_locatorNodeDrawOverride(obj)
  
     @staticmethod
     def draw(context, data):
         return
  
     def __init__(self, obj):
-        OpenMayaRender.MPxDrawOverride.__init__(self, obj, MntLocatorNodeDrawOverride.draw)
+        OpenMayaRender.MPxDrawOverride.__init__(self, obj, Mnt_locatorNodeDrawOverride.draw)
 
-        self.pointsArray = OpenMaya.MPointArray()
-        self.indicesArray = OpenMaya.MUintArray()
+        self.pointsArray    = OpenMaya.MPointArray()
+        self.indicesArray   = OpenMaya.MUintArray()
+        self.MObj               = obj
+        self.node           = OpenMaya.MFnDependencyNode(obj)
+        self.userNode       = OpenMaya.MFnDependencyNode(obj).userNode()
+        self.objPath        = OpenMaya.MDagPath.getAPathTo(obj)
  
     def createCircle3DBuffer(self, inRadius, inLocalPosition, inDirection):
         self.clearBuffers()
         posOutArray = []
         posInArray  = []
+        self.userNode.BBox.clear()
 
         for i in range(0,33):
             u = float(i)/32
@@ -240,21 +264,77 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
             self.pointsArray.append(posInArray[i + 1])
             self.pointsArray.append(posInArray[i])
             self.pointsArray.append(posOutArray[i])
+            self.userNode.BBox.expand(posOutArray[i])
 
         return
 
     def clearBuffers(self):
         self.pointsArray.clear()
         self.indicesArray.clear()
+
+    def getTransformNode(self, obj):
+        # Method to help get shape parent transform.
+        transformObj  = OpenMaya.MFnDagNode(obj).parent(0)
+        transformPath = OpenMaya.MDagPath().getAPathTo(transformObj)
+
+        return transformPath, transformObj
+        # __________________________________________
+
+    def getHighlightState(self, path):
+        # Method to prevent selection childs to have the same color
+        MSelectionList = OpenMaya.MGlobal.getActiveSelectionList()
+
+        if MSelectionList.hasItem(path):
+            return True
+
+        return False
+        # _________________________________________________________
+
+    def manageShapeColor(self):
+        # Manages color from shape state.
+        status          = OpenMayaUI.M3dView.displayStatus(self.objPath)
+        transformNode   = self.getTransformNode(self.MObj)
+        color           = self.node.findPlug('color', False).asMDataHandle().asFloat3()
+        opacity         = self.node.findPlug('opacity', False).asFloat()
+        
+        if status == OpenMayaUI.M3dView.kLead:
+            if self.getHighlightState(transformNode[0]) == True:
+                self.color = OpenMaya.MColor((1.0, 0.7, 0.2, 1.0))
+            else:
+                self.color = OpenMaya.MColor((1.0, 0.2, 0.2, opacity))
+
+        elif status == OpenMayaUI.M3dView.kActive:
+            if self.getHighlightState(transformNode[0]) == True:
+                self.color = OpenMaya.MColor((1.0, 0.35, 0.2, opacity))
+            else:
+                self.color = OpenMaya.MColor((1.0, 0.2, 0.2, opacity))
+
+        elif status == OpenMayaUI.M3dView.kActiveAffected:
+            self.color = OpenMaya.MColor((1.0, 0.2, 0.2, opacity))
+
+        elif status == OpenMayaUI.M3dView.kDormant:
+            self.color = OpenMaya.MColor((color[0], color[1], color[2], opacity))
+
+        else:
+            return
+        # _______________________________
         
     def supportedDrawAPIs(self):
         return OpenMayaRender.MRenderer.kAllDevices
  
     def prepareForDraw(self, objPath, cameraPath, frameContext, oldData):
+        self.interactiveRefresh = self.node.findPlug('interactiveRefresh', False).asBool()
+
+        if OpenMayaAnim.MAnimControl.isPlaying() == True:
+            return
+            
+        elif OpenMayaRender.MFrameContext.inUserInteraction() == True  and self.interactiveRefresh == False:
+            return
+
         ## Retrieve data cache (create if does not exist)
         data = oldData
-        if not isinstance(data, MntLocatorNode):
-            data = MntLocatorNodeData()
+        if not isinstance(data, Mnt_locatorNode):
+            data = Mnt_locatorNodeData()
 
         typeList        = ['Bone', 'Circle', 'Square', 'Skull', 'Pelvis', 'RibCage', 'Sphere', 'Disc', 'circle3D']
         statutColorList = ['Yellow' , 'Red', 'Blue']
@@ -270,8 +350,8 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
         localPositionX          = OpenMaya.MFnDependencyNode(MObj).findPlug('localPositionX', False).asFloat()
         localPositionY          = OpenMaya.MFnDependencyNode(MObj).findPlug('localPositionY', False).asFloat()
         localPositionZ          = OpenMaya.MFnDependencyNode(MObj).findPlug('localPositionZ', False).asFloat()
-        color                   = OpenMaya.MFnDependencyNode(MObj).findPlug('color', False).asMDataHandle().asFloat3()
-        opacity                 = OpenMaya.MFnDependencyNode(MObj).findPlug('opacity', False).asFloat()
+        #color                   = OpenMaya.MFnDependencyNode(MObj).findPlug('color', False).asMDataHandle().asFloat3()
+        #opacity                 = OpenMaya.MFnDependencyNode(MObj).findPlug('opacity', False).asFloat()
         label                   = OpenMaya.MFnDependencyNode(MObj).findPlug('label', False).asString()
         data.hierarchicalLink   = OpenMaya.MFnDependencyNode(MObj).findPlug('show_hierarchical_links', False).asBool()
         data.lineWidth          = OpenMaya.MFnDependencyNode(MObj).findPlug('line_width', False).asFloat()
@@ -302,7 +382,6 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
             try:
                 MFnDagParent = OpenMaya.MFnDagNode(MObjParentNode)
                 parentLocalMatrix   = MFnDagParent.transformationMatrix()    
-                '''parentShapePath     = MFnDagParent.getPath().extendToShape()'''
                 parentShapePath     = MFnDagParent.getPath().extendToShape()
 
                 MSelList.add(parentShapePath)
@@ -344,30 +423,29 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
         status = OpenMayaUI.M3dView.displayStatus(objPath)
 
         if iconType < 6:
-            if status == OpenMayaUI.M3dView.kLead or status == OpenMayaUI.M3dView.kActive:
-                if self.getHighlightState(fnMObjParent.name()) == True:
-                    texture = textureManager.acquireTexture(MntLocatorNode.iconFolder + 'mnt' + typeList[iconType] + 'Yellow.png')
+            if status == OpenMayaUI.M3dView.kLead:# or status == OpenMayaUI.M3dView.kActive:
+                if self.getHighlightState(self.getTransformNode(self.MObj)[0]) == True:
+                    texture = textureManager.acquireTexture(Mnt_locatorNode.iconFolder + 'mnt' + typeList[iconType] + 'Yellow.png')
                 else:
-                    texture = textureManager.acquireTexture(MntLocatorNode.iconFolder + 'mnt' + typeList[iconType] + 'Red.png')
+                    texture = textureManager.acquireTexture(Mnt_locatorNode.iconFolder + 'mnt' + typeList[iconType] + 'Red.png')
 
-            if status == OpenMayaUI.M3dView.kActiveAffected:
-                texture = textureManager.acquireTexture(MntLocatorNode.iconFolder + 'mnt' + typeList[iconType] + 'Green.png')
+            elif status == OpenMayaUI.M3dView.kActive:
+                if self.getHighlightState(self.getTransformNode(self.MObj)[0]) == True:
+                    texture = textureManager.acquireTexture(Mnt_locatorNode.iconFolder + 'mnt' + typeList[iconType] + 'Orange.png')
+                else:
+                    texture = textureManager.acquireTexture(Mnt_locatorNode.iconFolder + 'mnt' + typeList[iconType] + 'Red.png')
+
+            elif status == OpenMayaUI.M3dView.kActiveAffected:
+                texture = textureManager.acquireTexture(Mnt_locatorNode.iconFolder + 'mnt' + typeList[iconType] + 'Red.png')
                         
-            if status == OpenMayaUI.M3dView.kDormant:
-                texture = textureManager.acquireTexture(MntLocatorNode.iconFolder + 'mnt' + typeList[iconType] + 'Blue.png')
+            elif status == OpenMayaUI.M3dView.kDormant:
+                texture = textureManager.acquireTexture(Mnt_locatorNode.iconFolder + 'mnt' + typeList[iconType] + 'Blue.png')
 
             textureD        = texture.textureDescription()
         # __________________
 
         if iconType >= 6 or label != '':
-            if status == OpenMayaUI.M3dView.kLead or status == OpenMayaUI.M3dView.kActive:
-                data.color = OpenMaya.MColor((1.0, 0.7, 0.2, opacity + 0.2))
-
-            if status == OpenMayaUI.M3dView.kActiveAffected:
-                data.color = OpenMaya.MColor((1.0, 0.2, 0.2, opacity + 0.1))
-
-            if status == OpenMayaUI.M3dView.kDormant:
-                data.color = OpenMaya.MColor((color[0], color[1], color[2], opacity))
+            self.manageShapeColor()
         
         if iconType == 8:
             self.createCircle3DBuffer(size/2, (localPositionX, localPositionY, localPositionZ), iconMainAxis)
@@ -407,16 +485,6 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
             data.worldSizeX     = (data.screenSize / 28) / worldScale[0] *  factor
             data.worldSizeY     = (data.screenSize / 28) / worldScale[1] *  factor
             data.worldSizeZ     = (data.screenSize / 28) / worldScale[2] *  factor
-
-            #point = OpenMaya.MPoint()
-            #direction = OpenMaya.MVector()
-            #view.viewToWorld(int(data.screenSize), int(data.screenSize), point, direction)
-            #print(point)
-            #print(direction)
-            #data.worldSizeX     = point[0]
-            #data.worldSizeY     = point[1]
-            #data.worldSizeZ     = point[2]
-            
             data.areaOpacity    = areaOpacity
         
         # Manages 3D icons main axis
@@ -434,20 +502,9 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
         data.iconType       = iconType
         data.localPosition  = OpenMaya.MPoint(localPositionX, localPositionY, localPositionZ)
         data.label          = label
-        data.interactiveRefresh = OpenMaya.MFnDependencyNode(MObj).findPlug('interactiveRefresh', False).asBool()
+        #data.interactiveRefresh = OpenMaya.MFnDependencyNode(MObj).findPlug('interactiveRefresh', False).asBool()
         
         return data
-
-    # Method to prevent selection childs to have the same color
-    def getHighlightState(self, transformPath):
-        MSelectionList = OpenMaya.MGlobal.getActiveSelectionList()
-        MSelectionStrings = MSelectionList.getSelectionStrings()
-
-        if transformPath in MSelectionStrings:
-            return True
-
-        return False
-    # _________________________________________________________
 
     def hasUIDrawables(self):
         return True
@@ -456,13 +513,13 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
         locatordata = data
         status = OpenMayaUI.M3dView.displayStatus(objPath)
 
-        if not isinstance(locatordata, MntLocatorNodeData):
+        if not isinstance(locatordata, Mnt_locatorNodeData):
             return
 
         elif OpenMayaAnim.MAnimControl.isPlaying() == True:
             return
             
-        elif OpenMayaRender.MFrameContext.inUserInteraction() == True and data.interactiveRefresh == False:
+        elif OpenMayaRender.MFrameContext.inUserInteraction() == True and self.interactiveRefresh == False:
             return
 
         drawManager.beginDrawable(OpenMayaRender.MUIDrawManager.kSelectable)
@@ -478,20 +535,25 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
             drawManager.endDrawInXray()
 
             if data.label != '':
-                drawManager.setColor(data.color)      
+                drawManager.setColor(self.color)      
                 drawManager.setFontSize(11)      
                 drawManager.text2d(OpenMaya.MPoint(data.screenPos[0] + 16, data.screenPos[1]), data.label, alignment = OpenMayaRender.MUIDrawManager.kLeft)
 
         if data.iconType == 6:
-            drawManager.setColor(data.color)        
+            drawManager.setColor(self.color)        
             drawManager.sphere(data.localPosition, data.size, 16, 8, True)
+            self.userNode.BBox.clear()
 
         if data.iconType == 7:
-            drawManager.setColor(data.color)        
+            drawManager.setColor(self.color)        
             drawManager.circle(data.localPosition, data.upVector, data.size, 32, True)
+            # Bounding box update test
+            self.userNode.BBox.clear()
+            self.userNode.BBox.expand(OpenMaya.MPoint((-data.size, -data.size, -data.size)))
+            self.userNode.BBox.expand(OpenMaya.MPoint((data.size, data.size, data.size)))
 
         if data.iconType == 8:
-            drawManager.setColor(data.color)  
+            drawManager.setColor(self.color)  
             drawManager.mesh(4, self.pointsArray, None, None, self.indicesArray, None)
 
         if data.hierarchicalLink == True:
@@ -509,6 +571,373 @@ class MntLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
                 drawManager.endDrawInXray()
                            
         drawManager.endDrawable()
+# ______________________________
+
+# MPxSubSceneOverride implementation
+class Mnt_locatorSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
+    typeList        = ['Bone', 'Circle', 'Square', 'Skull', 'Pelvis', 'RibCage', 'Sphere', 'Disc', 'circle3D']
+    #statutColorList = ['Yellow' , 'Red', 'Blue']
+
+    class textureManagerClass(OpenMayaRender.MTextureManager):
+        def __init__(self):
+            return
+
+    @staticmethod
+    def creator(obj):
+        return Mnt_locatorSubSceneOverride(obj)
+
+    def __init__(self, obj):
+        OpenMayaRender.MPxSubSceneOverride.__init__(self, obj)
+
+        self.MObj               = obj
+        self.node               = OpenMaya.MFnDependencyNode(obj)
+        self.objPath            = OpenMaya.MDagPath.getAPathTo(obj)
+        self.userNode           = self.node.userNode()
+        self.size               = 1.0
+        self.color              = None
+        self.iconType           = None
+        self.upVector           = OpenMaya.MVector()
+        self.showHierarchyLinks = False
+        self.positionsBuffer    = OpenMaya.MPointArray()
+        self.indicesArray       = OpenMaya.MUintArray()
+        self.linePointsArray    = OpenMaya.MPointArray()
+
+    def getTransformNode(self, obj):
+        # Method to help get shape parent transform.
+        transformObj  = OpenMaya.MFnDagNode(obj).parent(0)
+        transformPath = OpenMaya.MDagPath().getAPathTo(transformObj)
+
+        return transformPath, transformObj
+        # __________________________________________
+
+    def getHighlightState(self, path):
+        # Method to prevent selection childs to have the same color
+        MSelectionList = OpenMaya.MGlobal.getActiveSelectionList()
+
+        if MSelectionList.hasItem(path):
+            return True
+
+        return False
+        # _________________________________________________________
+
+    def manageShapeColor(self):
+        # Manages color from shape state.
+        status          = OpenMayaUI.M3dView.displayStatus(self.objPath)
+        transformNode   = self.getTransformNode(self.MObj)
+        color           = self.node.findPlug('color', False).asMDataHandle().asFloat3()
+        opacity         = self.node.findPlug('opacity', False).asFloat()
+        
+        if status == OpenMayaUI.M3dView.kLead:
+            if self.getHighlightState(transformNode[0]) == True:
+                self.color = OpenMaya.MColor((1.0, 0.7, 0.2, 1.0))
+            else:
+                self.color = OpenMaya.MColor((1.0, 0.2, 0.2, opacity))
+
+        elif status == OpenMayaUI.M3dView.kActive:
+            if self.getHighlightState(transformNode[0]) == True:
+                self.color = OpenMaya.MColor((1.0, 0.35, 0.2, opacity))
+            else:
+                self.color = OpenMaya.MColor((1.0, 0.2, 0.2, opacity))
+
+        elif status == OpenMayaUI.M3dView.kActiveAffected:
+            self.color = OpenMaya.MColor((1.0, 0.2, 0.2, opacity))
+
+        elif status == OpenMayaUI.M3dView.kDormant:
+            self.color = OpenMaya.MColor((color[0], color[1], color[2], opacity))
+
+        else:
+            return
+        # _______________________________
+        
+    def requiresUpdate(self, container, frameContext):
+        if self.node.findPlug('interactiveRefresh', False).asBool() == True:
+            return True
+        elif OpenMayaRender.MFrameContext.inUserInteraction() == True or OpenMayaAnim.MAnimControl.isPlaying() == True:
+            self.linePointsArray.clear()
+            return False
+        else:
+            return True
+
+        #return True
+
+    def update(self, container, frameContext):
+        self.localPos           = self.node.findPlug('localPosition', False).asMDataHandle().asDouble3()
+        self.size               = self.node.findPlug('size', False).asFloat()
+        self.iconType           = self.node.findPlug('iconType', False).asInt()
+        self.iconMainAxis       = self.node.findPlug('iconMainAxis', False).asInt()
+        self.label              = self.node.findPlug('label', False).asString()
+        self.xRayMode           = self.node.findPlug('xRayMode', False).asBool()
+        self.showHierarchyLinks = self.node.findPlug('show_hierarchical_links', False).asBool()
+        self.dottedLine         = self.node.findPlug('use_dotted_line', False).asBool()
+        self.lineWidth          = self.node.findPlug('line_width', False).asInt()
+        self.lineColor          = self.node.findPlug('line_color', False).asMDataHandle().asFloat3()
+
+        if self.iconMainAxis == 0:
+            self.upVector = OpenMaya.MVector(1, 0, 0)
+        elif self.iconMainAxis == 1:
+            self.upVector = OpenMaya.MVector(0, 1, 0)
+        else:
+            self.upVector = OpenMaya.MVector(0, 0, 1)
+
+        # Manages hierarchy links display
+        transformNode           = self.getTransformNode(self.MObj)
+        parentTransformDagNode  = OpenMaya.MFnDagNode(transformNode[1])
+        parentTransformNode     = parentTransformDagNode.parent(0)
+        parentTransformNodeDnFn = OpenMaya.MFnDependencyNode(parentTransformNode)
+
+        MSelList = OpenMaya.MSelectionList()
+        MSelList.clear()
+        self.linePointsArray.clear()
+
+        if self.showHierarchyLinks == True:
+            if parentTransformNodeDnFn.name() != 'world':
+                try:
+                    MFnDagParent = OpenMaya.MFnDagNode(parentTransformNode)
+                    parentLocalMatrix   = MFnDagParent.transformationMatrix()    
+                    parentShapePath     = MFnDagParent.getPath().extendToShape()
+
+                    MSelList.add(parentShapePath)
+                    MObjParentShape = MSelList.getDependNode(0)
+                    MFnDependencyNodeParentShape = OpenMaya.MFnDependencyNode(MObjParentShape)
+
+                    # Gets Local matrix
+                    localMatrix = parentTransformDagNode.transformationMatrix()
+                    # _________________
+
+                    # Gets Offset Matrix
+                    offsetMatrixAttr      = parentTransformNodeDnFn.attribute('offsetParentMatrix')
+                    offsetMatrixPlug      = OpenMaya.MPlug(parentTransformNode, offsetMatrixAttr)
+                    offsetMatrixPlugObj   = offsetMatrixPlug.asMObject()
+                    offsetMatrixData      = OpenMaya.MFnMatrixData(offsetMatrixPlugObj)
+                    offsetMatrix          = offsetMatrixData.matrix()
+                    # ________________________
+
+                    # Calculates final matrix
+                    outputMatrix = localMatrix.__mul__(offsetMatrix).inverse()
+                    # _______________________
+                    
+                    # Adds position to node data
+                    if self.dottedLine == False:
+                        self.linePointsArray.append(OpenMaya.MPoint(0,0,0))
+                        self.linePointsArray.append(OpenMaya.MPoint(outputMatrix[12], outputMatrix[13], outputMatrix[14]))
+                    else:
+                        dotsNumber = OpenMaya.MFnDependencyNode(self.MObj).findPlug('dots_number', False).asInt()
+                        for i in range(0, 2 * dotsNumber):
+                            u = float(i)/(2 * dotsNumber)
+                            point = OpenMaya.MPoint(u * outputMatrix[12], u * outputMatrix[13], u * outputMatrix[14])
+                            self.linePointsArray.append(point)
+                    # __________________________
+                except:
+                    pass
+        else:
+            pass
+        # _______________________________
+
+        if self.iconType < 6:
+            # Gets camera path and world matrix
+            activeView  = OpenMayaUI.M3dView.active3dView()        
+            viewWidth   = OpenMayaUI.M3dView.portWidth(activeView)
+            viewHeight  = OpenMayaUI.M3dView.portHeight(activeView)
+
+            cameraPath = activeView.getCamera()
+            cameraObj = OpenMaya.MFnCamera(cameraPath)
+            cameraWorldMatrix = cameraPath.exclusiveMatrix()
+            # _________________________________
+
+            # Manages textures
+            typeList        = ['Bone', 'Circle', 'Square', 'Skull', 'Pelvis', 'RibCage', 'Sphere', 'Disc', 'circle3D']
+            status          = OpenMayaUI.M3dView.displayStatus(self.objPath)
+            textureManager  = self.textureManagerClass()
+            self.texture    = textureManager.acquireTexture(Mnt_locatorNode.iconFolder + 'mnt' + typeList[self.iconType] + 'Yellow.png')
+            textureDesc     = self.texture.textureDescription()
+            
+            #if status == OpenMayaUI.M3dView.kLead or status == OpenMayaUI.M3dView.kActive:
+            # ________________
+           
+            # Gets self world matrix
+            objWorldMatrix = self.objPath.exclusiveMatrix()
+            # ______________________
+
+            # Extract world scale
+            objWorldTransformMatrix = OpenMaya.MTransformationMatrix(objWorldMatrix)
+            worldScale = objWorldTransformMatrix.scale(OpenMaya.MSpace.kWorld)
+            # ___________________
+
+            # Gets camera/self vector
+            camObjvector    = OpenMaya.MVector( cameraWorldMatrix[12] - objWorldMatrix[12],\
+                                                cameraWorldMatrix[13] - objWorldMatrix[13],\
+                                                cameraWorldMatrix[14] - objWorldMatrix[14])
+            # _______________________
+
+            # Gets final shape world matrix
+            localMatrix = OpenMaya.MMatrix(((1, 0, 0,0),\
+                                            (0, 1, 0,0),\
+                                            (0, 0, 1,0),\
+                                            (self.localPos[0], self.localPos[1], self.localPos[2], 1)))
+
+            shapeMatrix = localMatrix.__mul__(objWorldMatrix)
+            # _____________________________
+
+            # Create a factor to adjust size
+            if cameraObj.isOrtho() == False:
+                factor = (camObjvector.length() / cameraObj.focalLength) / (float(viewWidth) / float(viewHeight)) * 0.5
+            else:
+                factor = (cameraObj.orthoWidth) / (float(viewWidth) / float(viewHeight))/80
+            # ______________________________
+
+            # Gets locator position in screen space
+            self.screenPos  = activeView.worldToView(OpenMaya.MPoint(shapeMatrix[12], shapeMatrix[13], shapeMatrix[14]))
+            self.screenSize = 0.5 * textureDesc.fHeight * self.size
+            self.worldSize     = [(self.screenSize / 28) / worldScale[0] *  factor,\
+                                (self.screenSize / 28) / worldScale[1] *  factor,\
+                                (self.screenSize / 28) / worldScale[2] *  factor]  
+            # _____________________________________
+
+        #if self.iconType >= 6 or self.label != '':
+        if self.iconType >= 6:
+            self.manageShapeColor()
+
+        if self.iconType == 8:
+            self.rebuildGeometryBuffers()
+        else:
+            self.clearGeometryBuffers()
+
+        # Bounding box update test
+        self.userNode.BBox.clear()
+        self.userNode.BBox.expand(OpenMaya.MPoint((-self.size/2, -self.size/2, -self.size/2)))
+        self.userNode.BBox.expand(OpenMaya.MPoint((self.size/2, self.size/2, self.size/2)))
+        # ________________________
+
+        return True
+
+    def furtherUpdateRequired(self, frameContext):
+        return True
+
+    def manageRenderItems(self, container, frameContext, updateGeometry):
+        return
+    
+    def rebuildGeometryBuffers(self):
+        if self.iconType == 8:
+            self.positionsBuffer = self.createCircle3DBuffer(self.size/2, self.localPos, self.iconMainAxis)
+        return
+    
+    def clearGeometryBuffers(self):
+        self.positionsBuffer.clear()
+        self.indicesArray.clear()
+        return
+        
+    def createCircle3DBuffer(self, inRadius, inLocalPosition, inDirection):
+        self.clearGeometryBuffers()
+        posOutArray = []
+        posInArray  = []
+        self.userNode.BBox.clear()
+        outputBuffer = OpenMaya.MPointArray()
+
+        for i in range(0,33):
+            u = float(i)/32
+            pi = math.pi
+
+            if inDirection == 0:
+                posOut =    OpenMaya.MPoint(0 + inLocalPosition[0], inRadius * math.cos(2* pi * u) + inLocalPosition[1], (inRadius * math.sin(2* pi * u) + inLocalPosition[2]))
+                posIn =     OpenMaya.MPoint(0 + inLocalPosition[0], 0.85 * inRadius * math.cos(2* pi * u) + inLocalPosition[1], 0.85 * inRadius * math.sin(2* pi * u)+ inLocalPosition[2])    
+            elif inDirection == 1:
+                posOut =    OpenMaya.MPoint(inRadius * math.cos(2* pi * u) + inLocalPosition[0], 0 + inLocalPosition[1], (inRadius * math.sin(2* pi * u) + inLocalPosition[2]))
+                posIn =     OpenMaya.MPoint(0.85 * inRadius * math.cos(2* pi * u) + inLocalPosition[0], 0 + inLocalPosition[1], 0.85 * inRadius * math.sin(2* pi * u)+ inLocalPosition[2])
+            else:
+                posOut =    OpenMaya.MPoint(inRadius * math.cos(2* pi * u) + inLocalPosition[0], (inRadius * math.sin(2* pi * u) + inLocalPosition[1]), 0 + inLocalPosition[2])
+                posIn =     OpenMaya.MPoint(0.85 * inRadius * math.cos(2* pi * u) + inLocalPosition[0], 0.85 * inRadius * math.sin(2* pi * u)+ inLocalPosition[1], 0 + inLocalPosition[2])
+
+            posOutArray.append(posOut)
+            posInArray.append(posIn)
+            
+        for i in range(0, 32):
+            outputBuffer.append(posOutArray[i])
+            outputBuffer.append(posOutArray[i + 1])
+            outputBuffer.append(posInArray[i + 1])
+            outputBuffer.append(posInArray[i + 1])
+            outputBuffer.append(posInArray[i])
+            outputBuffer.append(posOutArray[i])
+
+        return outputBuffer
+    
+    def hasUIDrawables(self):
+        return True
+
+    def areUIDrawablesDirty(self):
+        return True
+
+    def addUIDrawables(self, drawManager, frameContext):
+
+        if OpenMayaAnim.MAnimControl.isPlaying() == True:
+            return
+        elif OpenMayaRender.MFrameContext.inUserInteraction() == True and self.userNode.isInteractive == False:
+            return
+        else:
+            pass
+        
+        drawManager.beginDrawable(OpenMayaRender.MUIDrawManager.kSelectable)
+        
+        if self.xRayMode == True:
+            drawManager.beginDrawInXray()
+        else:
+            pass
+
+        if self.iconType < 6:
+            color = OpenMaya.MColor((0.1, 0.2, 0.4, 0.1))
+            drawManager.setColor(color)            
+            drawManager.box(OpenMaya.MPoint(self.localPos), OpenMaya.MVector(0, 1, 0), OpenMaya.MVector(1, 0, 0), self.worldSize[0], self.worldSize[1], self.worldSize[2], True)
+
+            drawManager.beginDrawInXray()
+            drawManager.setTexture(self.texture)
+            drawManager.rect2d(OpenMaya.MPoint((self.screenPos[0], self.screenPos[1])), OpenMaya.MVector(0.0, 1.0), self.screenSize, self.screenSize, True)
+            drawManager.endDrawInXray()
+
+        if self.iconType == 6:
+            drawManager.setColor(OpenMaya.MColor(self.color))   
+            drawManager.sphere(OpenMaya.MPoint(self.localPos), self.size/2, 16, 8, True)
+
+        elif self.iconType == 7:
+            drawManager.setColor(OpenMaya.MColor(self.color))   
+            drawManager.circle(OpenMaya.MPoint(self.localPos), OpenMaya.MVector(self.upVector), self.size/2, 32, True)
+            
+        elif self.iconType == 8:
+            drawManager.setColor(OpenMaya.MColor(self.color))   
+            drawManager.mesh(OpenMayaRender.MUIDrawManager.kTriangles, self.positionsBuffer, None, None, self.indicesArray, None)
+
+        else:
+            pass
+        
+        if self.xRayMode == True:
+            drawManager.endDrawInXray()
+        else:
+            pass
+
+        drawManager.endDrawable()
+
+        drawManager.beginDrawable(OpenMayaRender.MUIDrawManager.kNonSelectable)
+
+        if self.label != '':
+            drawManager.setColor(self.color)      
+            drawManager.setFontSize(11)      
+            drawManager.text2d(OpenMaya.MPoint(self.screenPos[0] + 16, self.screenPos[1]), self.label, alignment = OpenMayaRender.MUIDrawManager.kLeft)
+
+        if self.showHierarchyLinks == True:
+            if self.linePointsArray.__len__() > 1:
+                drawManager.beginDrawInXray()
+                drawManager.setColor(OpenMaya.MColor((self.lineColor[0], self.lineColor[1], self.lineColor[2],1)))#
+                drawManager.setLineWidth(self.lineWidth)
+
+                if self.dottedLine == False:
+                    drawManager.line(self.linePointsArray[0], self.linePointsArray[1])
+                else:
+                    for i in range(0, self.linePointsArray.__len__(), 2):
+                        drawManager.line(self.linePointsArray[i], self.linePointsArray[i + 1]) 
+                        
+                drawManager.endDrawInXray()
+        drawManager.endDrawable()
+
+        return
+# __________________________________
 # _______________________________________________________________
 
 class Mnt_characterInfoNode(OpenMayaUI.MPxLocatorNode):
@@ -553,7 +982,7 @@ class Mnt_characterInfoNode(OpenMayaUI.MPxLocatorNode):
         stringAttrFn.hidden   = True
         Mnt_characterInfoNode.addAttribute(Mnt_characterInfoNode.spaceSwitchInfosAttr)
 
-        Mnt_characterInfoNode.marginAttr = numAttrFn.create('margin', 'margin', OpenMaya.MFnNumericData.kInt, 0)
+        Mnt_characterInfoNode.marginAttr = numAttrFn.create('margin', 'margin', OpenMaya.MFnNumericData.kInt, 40)
         numAttrFn.writable = True
         numAttrFn.readable = True
         numAttrFn.setMin(40)
@@ -747,32 +1176,33 @@ def initializePlugin(obj):
     plugin = OpenMaya.MFnPlugin(obj, "Florian Delarque", "2.0", "Any")
  
     try:
-        plugin.registerNode(MntLocatorNode.kPluginNodeName, MntLocatorNode.id, MntLocatorNode.creator, MntLocatorNode.initialize, OpenMaya.MPxNode.kLocatorNode, MntLocatorNode.drawDbClassification)
+        plugin.registerNode(Mnt_locatorNode.kPluginNodeName, Mnt_locatorNode.id, Mnt_locatorNode.creator, Mnt_locatorNode.initialize, OpenMaya.MPxNode.kLocatorNode, Mnt_locatorNode.drawDbClassification)
         plugin.registerNode(Mnt_characterInfoNode.kPluginNodeName, Mnt_characterInfoNode.id, Mnt_characterInfoNode.creator, Mnt_characterInfoNode.initialize, OpenMaya.MPxNode.kLocatorNode, Mnt_characterInfoNode.drawDbClassification)
     except:
-        sys.stderr.write("Failed to register node\n")
+        OpenMaya.MGlobal.displayError("Failed to register node\n")
         raise
  
     try:
-        OpenMayaRender.MDrawRegistry.registerDrawOverrideCreator(MntLocatorNode.drawDbClassification, MntLocatorNode.drawRegistrantId, MntLocatorNodeDrawOverride.creator)
+        OpenMayaRender.MDrawRegistry.registerDrawOverrideCreator(Mnt_locatorNode.drawDbClassification, Mnt_locatorNode.drawRegistrantId, Mnt_locatorNodeDrawOverride.creator)
+        #OpenMayaRender.MDrawRegistry.registerSubSceneOverrideCreator(Mnt_locatorNode.drawDbClassification, Mnt_locatorNode.drawRegistrantId, Mnt_locatorSubSceneOverride.creator)
         OpenMayaRender.MDrawRegistry.registerDrawOverrideCreator(Mnt_characterInfoNode.drawDbClassification, Mnt_characterInfoNode.drawRegistrantId, Mnt_characterInfoNodeDrawOverride.creator)
     except:
-        sys.stderr.write("Failed to register override\n")
+        OpenMaya.MGlobal.displayError("Failed to register override\n")
         raise
  
 def uninitializePlugin(obj):
     plugin = OpenMaya.MFnPlugin(obj)
  
     try:
-        plugin.deregisterNode(MntLocatorNode.id)
+        plugin.deregisterNode(Mnt_locatorNode.id)
         plugin.deregisterNode(Mnt_characterInfoNode.id)
     except:
-        sys.stderr.write("Failed to deregister node\n")
+        OpenMaya.MGlobal.displayError("Failed to deregister node\n")
         pass
  
     try:
-        OpenMayaRender.MDrawRegistry.deregisterDrawOverrideCreator(MntLocatorNode.drawDbClassification, MntLocatorNode.drawRegistrantId)
+        OpenMayaRender.MDrawRegistry.deregisterDrawOverrideCreator(Mnt_locatorNode.drawDbClassification, Mnt_locatorNode.drawRegistrantId)
         OpenMayaRender.MDrawRegistry.deregisterDrawOverrideCreator(Mnt_characterInfoNode.drawDbClassification, Mnt_characterInfoNode.drawRegistrantId)
     except:
-        sys.stderr.write("Failed to deregister override\n")
+        OpenMaya.MGlobal.displayError("Failed to deregister override\n")
         pass

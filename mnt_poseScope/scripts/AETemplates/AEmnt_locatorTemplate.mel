@@ -1,20 +1,24 @@
 global proc AEmnt_locatorTemplate(string $nodeName)
 {
     editorTemplate -beginScrollLayout;
-        editorTemplate -beginLayout "mnt_locator Attributes" -collapse 0;
+        editorTemplate -beginLayout "Mnt Locator Attributes" -collapse 0;
         editorTemplate -label "Size" -addControl "size";
         editorTemplate -label "Area Visibility" -addControl "areaVisibility";
         editorTemplate -label "Color" -addControl "color";
         editorTemplate -label "Opacity" -addControl "opacity";
         editorTemplate -label "Icon Type" -addControl "iconType";
         editorTemplate -label "Icon main Axis" -addControl "iconMainAxis";
+        editorTemplate -label "Label" -addControl "label";
+        editorTemplate -label "XRay Mode" -addControl "xRayMode";
+        editorTemplate -label "Interactive Refresh" -addControl "interactiveRefresh";
+        editorTemplate -endLayout;
+
+        editorTemplate -beginLayout "Hierarchical Links" -collapse 0;
         editorTemplate -label "Show hierarchical Links" -addControl "show_hierarchical_links";
         editorTemplate -label "Use Dotted Line" -addControl "use_dotted_line";
         editorTemplate -label "Dots Number" -addControl "dots_number";
         editorTemplate -label "Line Width" -addControl "line_width";
         editorTemplate -label "Line Color" -addControl "line_color";
-        editorTemplate -label "Label" -addControl "label";
-        editorTemplate -label "Interactive Refresh" -addControl "interactiveRefresh";
         editorTemplate -endLayout;
 
     editorTemplate -addExtraControls;
