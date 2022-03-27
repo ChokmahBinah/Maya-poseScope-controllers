@@ -21,10 +21,6 @@ cmds.evalDeferred('mnt_poseScopeShelf.MntCustomShelf(\'mnt_poseScope\')')
 cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction=\'enableEvaluationCache\')')
 cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction = \'enableVP2Cache\', newActionParam = \'useHardware=0\')')
 cmds.evalDeferred('cmds.cacheEvaluator(newFilter= \'nodeTypes\', newFilterParam=\'types=+mnt_locator\', newAction = \'enableVP2Cache\', newActionParam = \'useHardware=1\')')
-
-#cmds.evalDeferred('cmds.cacheEvaluator(newFilter=\'nodeTypes\', newFilterParam = \'types=+mnt_poseScope\' , newAction = \'enableEvaluationCache\')')
-#cmds.evalDeferred('cmds.cacheEvaluator(newFilter=\'nodeTypes\', newFilterParam = \'types=+mnt_poseScope\' , newAction = \'enableVP2Cache\', newActionParam = \'useHardware=0\')')
-#cmds.evalDeferred('cmds.cacheEvaluator(newFilter=\'nodeTypes\', newFilterParam = \'types=+mnt_poseScope\' , newAction = \'enableVP2Cache\', newActionParam = \'useHardware=1\')')
 # ________________________________________________
 
 # Adds custom buttons to ToolBox
