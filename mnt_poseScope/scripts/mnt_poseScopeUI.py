@@ -133,6 +133,109 @@ class mnt_poseScopeUI():
         cmds.scriptTable('table', e = True, sm = 3)
         return
 
+    def getRootNode(self, *args):
+        parentName = None
+        node = OpenMaya.MObject.kNullObj
+
+        while parentName == None:
+            if node == OpenMaya.MObject.kNullObj:
+                MSelectionList = OpenMaya.MGlobal.getActiveSelectionList()
+                if MSelectionList.length() == 0:
+                    return None
+                else:
+                    node = MSelectionList.getDependNode(0)
+            else:
+                pass
+
+            parentNode = OpenMaya.MFnDagNode(node).parent(0)
+            parentDnFn = OpenMaya.MFnDependencyNode(parentNode)
+            
+            if parentDnFn.name() == 'world':
+                parentName = OpenMaya.MFnDependencyNode(node).name()
+                return node
+            else:
+                node = parentNode
+
+    def getPoseScopes(self, inNode, *args):
+        if not inNode:
+            return
+
+        poseScopesList = []
+
+        MItDag = OpenMaya.MItDag()
+        MItDag.reset(inNode)
+
+        while not MItDag.isDone():
+            node = MItDag.currentItem()
+            nodeDNFn = OpenMaya.MFnDependencyNode(node)
+            
+            if nodeDNFn.typeName == 'mnt_poseScope':
+                poseScopesList.append(node)
+
+            MItDag.next()
+
+        return poseScopesList
+
+    def getPoseScopesInfos2(self, *args):
+        outputCtrlList      = []
+        outputMeshList      = []
+        outputFaceCompList  = []
+        outputColorList     = []
+        outputOpacityList   = []
+        outputHilightList   = []
+
+        poseScopesList = self.getPoseScopes(self.getRootNode())
+
+        if not poseScopesList:
+            OpenMaya.MGlobal.displayError('No DAG node selected! Please select one.')
+            return None
+
+        for poseScopeObj in poseScopesList:
+            # Finds poseScope parent transform node
+            nodeDAG = OpenMaya.MFnDagNode(poseScopeObj)
+            parentTransformName = OpenMaya.MFnDependencyNode(nodeDAG.parent(0)).name()
+            outputCtrlList.append(parentTransformName)
+            # ____________________________________
+
+            # Gets inputs meshes
+            poseScopeDNFn   = OpenMaya.MFnDependencyNode(poseScopeObj)
+            inputMeshObj    = poseScopeDNFn.findPlug('inputMesh', False).connectedTo(True, False)[0].node()
+            outputMeshList.append(OpenMaya.MFnDependencyNode(inputMeshObj).name())
+            # __________________
+
+            # Finds input faces components as string
+            inputFacesPlug = poseScopeDNFn.findPlug('inputFaceComponents', False)
+            componentsListData = OpenMaya.MFnComponentListData(inputFacesPlug.asMObject())
+                
+            string = ''
+
+            for i in range(componentsListData.length()):
+                component = componentsListData.get(i)
+                singleIndexedComponent = OpenMaya.MFnSingleIndexedComponent(component)
+                    
+                string = string + ' ' + str(singleIndexedComponent.getElements()).replace('[', '').replace(']', '').replace(',', '')
+
+            outputFaceCompList.append(string[1 : len(string)])
+            # ______________________________________
+
+            # Gets its color
+            colorR = poseScopeDNFn.findPlug('colorR', False).asDouble()
+            colorG = poseScopeDNFn.findPlug('colorG', False).asDouble()
+            colorB = poseScopeDNFn.findPlug('colorB', False).asDouble()
+            color = (colorR, colorG, colorB)
+            outputColorList.append(color)
+            # ______________
+
+            # Gets its opacity properties
+            opacity         = poseScopeDNFn.findPlug('opacity', False).asFloat()
+            hilightOpacity  = poseScopeDNFn.findPlug('hilightOpacity', False).asFloat()
+
+            outputOpacityList.append(opacity)
+            outputHilightList.append(hilightOpacity)
+            # ___________________________
+
+        return outputCtrlList, outputMeshList, outputFaceCompList, outputColorList, outputOpacityList, outputHilightList
+
     def getPoseScopesInfos(self, *args):
         outputCtrlList      = []
         outputFaceCompList  = []
@@ -207,41 +310,36 @@ class mnt_poseScopeUI():
         return shapePath, outputCtrlList, outputFaceCompList, outputColorList
 
     def savePoseScopeInfos(self, * args):
+        poseScopesFile = cmds.fileDialog2(caption = 'Export poseScopes', ff = '*.json', dialogStyle = 2, fm = 0, okCaption = 'Export', dir = cmds.workspace(q = True, active = True))
+
         outputFolder = cmds.workspace(q = True, active = True) + '/data/poseScopes_infos/'
 
-        poseScopeInfos = self.getPoseScopesInfos()
+        poseScopeInfos = self.getPoseScopesInfos2()
+
         if poseScopeInfos == None:
             OpenMaya.MGlobal.displayError('Please select a polySurface mesh before using this command.')
             return
 
         # Creates a json object
         json_obj = {}
-        json_obj['polySurface'] = []
+        #json_obj['polySurface'] = []
         json_obj['poseScopes'] = []
         # _____________________
 
-        if len(poseScopeInfos[1]) == 0:
-            OpenMaya.MGlobal.displayError('Selected mesh isn\'t connected to any poseScope.')
-            return
-
         # Creates a dictionnary from poseScopeInfos
-        json_obj['polySurface'].append(str(poseScopeInfos[0]))
-
-        for i in range(0, len(poseScopeInfos[1])):
+        for i in range(0, len(poseScopeInfos[0])):
             json_obj['poseScopes'].append({
-                'Controller' : poseScopeInfos[1][i],
+                'Controller' : poseScopeInfos[0][i],
+                'Input Mesh' : poseScopeInfos[1][i],
                 'ComponentsList' : poseScopeInfos[2][i],
-                'Color' : poseScopeInfos[3][i]
+                'Color' : poseScopeInfos[3][i],
+                'Opacity' : poseScopeInfos[4][i],
+                'Hilight Opacity' : poseScopeInfos[5][i]
             })
         # _________________________________________
 
-        # Creates json file
-        try:
-            os.mkdir(outputFolder)
-        except:
-            pass
-
-        with open(outputFolder + 'poseScopes_' + str(poseScopeInfos[0]) + '.json', 'w') as f:
+        # Creates json file        
+        with open(poseScopesFile[0], 'w') as f:
             json.dump(json_obj, f, indent = 4)
         
         OpenMaya.MGlobal.displayInfo('PoseScope infos exported.')
@@ -257,18 +355,18 @@ class mnt_poseScopeUI():
         with open(poseScopesFile[0]) as f:
             poseScopesData = json.load(f)
 
-        meshShape = poseScopesData['polySurface']      
         keys = poseScopesData.keys()
         
         for i in range(0, len(poseScopesData['poseScopes'])):
-            controller = poseScopesData['poseScopes'][i]['Controller']
-            componentList = poseScopesData['poseScopes'][i]['ComponentsList'].split()
+            controller      = poseScopesData['poseScopes'][i]['Controller']
+            inputMesh       = poseScopesData['poseScopes'][i]['Input Mesh']
+            componentList   = poseScopesData['poseScopes'][i]['ComponentsList'].split()
            
             # Creates poseScope
             cmds.select(cl = True)
 
             for j in range(0, len(componentList)):
-                cmds.select(meshShape[0] + '.f[' + componentList[j] + ']', add = True)
+                cmds.select(inputMesh + '.f[' + componentList[j] + ']', add = True)
 
             cmds.select(controller, add = True)
             cmds.createPoseScopeShape()
@@ -284,4 +382,6 @@ class mnt_poseScopeUI():
             poseScopeDNFn.findPlug('colorR', False).setDouble(poseScopesData['poseScopes'][i]['Color'][0])
             poseScopeDNFn.findPlug('colorG', False).setDouble(poseScopesData['poseScopes'][i]['Color'][1])
             poseScopeDNFn.findPlug('colorB', False).setDouble(poseScopesData['poseScopes'][i]['Color'][2])
+            poseScopeDNFn.findPlug('opacity', False).setFloat(poseScopesData['poseScopes'][i]['Opacity'])
+            poseScopeDNFn.findPlug('hilightOpacity', False).setFloat(poseScopesData['poseScopes'][i]['Hilight Opacity'])
             # _________________________
