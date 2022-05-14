@@ -10,6 +10,7 @@ class mnt_poseScopeUI():
     def buildUI(self):
         iconPath = cmds.getModulePath(moduleName = 'mnt_poseScope') + '/icons/mntShelf/'
         windowwidth = 200
+        buttonSize = 32
 
         if cmds.workspaceControl('mnt_poseScope_editor', ex = True):
             cmds.deleteUI('mnt_poseScope_editor')
@@ -38,21 +39,146 @@ class mnt_poseScopeUI():
         cmds.setParent('..')
 
         cmds.columnLayout(adj = True, w = 500)
+
         cmds.text('PoseScopes Table', h = 24, bgc  =(0.2, 0.2, 0.2))
-        cmds.textFieldButtonGrp('getInfosControl', label = 'PolySurface Name : ', text = 'None', buttonLabel = 'Get Posescopes', cat = (1, 'left', 0),\
-            ct3 = ('left', 'left', 'left'), cw3 = (100, 170, 100), bc = self.updatePoseScopeTable)
+        cmds.button('getInfosControl', l = 'Get Posescopes', h = 32, c = self.updatePoseScopeTable)
+
         form = cmds.formLayout()
+        table = cmds.scriptTable('table', rows = 0, columns = 5, label = [(1, 'Controller Name'), (2, 'Input Mesh'), (3, 'Opacity'), (4, 'Hilight'), (5, 'Visibility')], h = 530,\
+            cw = (2, 125), ed = False, cellChangedCmd = self.edit_cell, sm = 3, sb = 1, mee = False)
 
-        table = cmds.scriptTable('table', rows = 0, columns = 3, label = [(1, 'Controller Name'), (2, 'Components List'), (3, 'PoseScope Visibility')], h = 530,\
-            cw = (2, 200), ed = False, cellChangedCmd = self.edit_cell, sm = 3, sb = 1, mee = False)
         cmds.scriptTable('table', edit = True, cw = (1, 150))
-        cmds.scriptTable('table', edit = True, cw = (3, 110))    
+        cmds.scriptTable('table', edit = True, cw = (3, 50))    
+        cmds.scriptTable('table', edit = True, cw = (4, 50))    
         cmds.scriptTable('table', edit = True, selectionChangedCmd = self.cellSelected, cbc = self.setBackgroundColor)
-
         cmds.formLayout(form, edit = True, attachForm=[(table, 'top', 0), (table, 'left', 0), (table, 'right', 0),])
         cmds.setParent('..')
 
+        cmds.colorSliderButtonGrp('setColor', label = 'PoseScope Color', buttonLabel = 'Apply', rgb = (1.0, 0.5, 0.0), symbolButtonDisplay = False, columnWidth = (5, 30),\
+            adj = 2, cal = (1, 'left'), cw3 = (75, 170, 100), bc = self.changeColor)
+        cmds.floatSliderButtonGrp('applyOpacity',label = 'Opacity', field = True, buttonLabel = 'Apply', symbolButtonDisplay = False, columnWidth = (5, 30),\
+            adj = 2, cal = (1, 'left'), cw3 = (75, 170, 100), v = 0.05, s = 0.01, min = 0.0, max = 1.0, bc = self.applyOpacity, en = True)
+        cmds.floatSliderButtonGrp('applyHilightOpacity', label = 'Hilight Opacity', field = True, buttonLabel = 'Apply', symbolButtonDisplay = False, columnWidth = (5, 30),\
+            adj = 2, cal = (1, 'left'), cw3 = (75, 170, 100), v = 0.2, s = 0.01, min = 0.0, max = 1.0, bc = self.applyHilightOpacity, en = True)
+
         cmds.setParent('..')
+
+    def changeColor(self):
+        colorValue = cmds.colorSliderButtonGrp('setColor', q = True, rgbValue = True)
+
+        MSelectionList      = OpenMaya.MGlobal.getActiveSelectionList()
+
+        if MSelectionList.length() == 0:
+            selectedCells =  cmds.scriptTable('table', q = True, selectedCells = True)
+            
+            if selectedCells != None:
+                
+                for i in range(0, len(selectedCells), 2):
+                    transformNode = cmds.scriptTable('table', cellIndex = (selectedCells[i], 1), q = True, cellValue = True)
+                    transformNode = str(transformNode).replace('[', '').replace(']', '').replace('\'', '')
+                    cmds.select(transformNode, add = True)
+                MSelectionList      = OpenMaya.MGlobal.getActiveSelectionList()
+            else:
+                OpenMaya.MGlobal.displayError('Nothing selected! Please select some poseScopes first.')
+                return
+        
+        for i in range(0, MSelectionList.length()):
+            MObj = MSelectionList.getDependNode(i)
+            MDagPath = OpenMaya.MDagPath.getAPathTo(MObj)
+            
+            for j in range(MDagPath.childCount()):
+                try:
+                    child = MDagPath.child(j)
+                except:
+                    continue
+
+                childDnFn = OpenMaya.MFnDependencyNode(child)
+
+                if childDnFn.typeName == 'mnt_poseScope':
+                    childDnFn.findPlug('colorR', False).setDouble(colorValue[0])
+                    childDnFn.findPlug('colorG', False).setDouble(colorValue[1])
+                    childDnFn.findPlug('colorB', False).setDouble(colorValue[2])
+        
+        self.selectCellsFromSelection()
+        return
+
+    def applyOpacity(self):
+        opacityValue = cmds.floatSliderButtonGrp('applyOpacity', q = True, v = True)
+        
+        MSelectionList      = OpenMaya.MGlobal.getActiveSelectionList()
+
+        if MSelectionList.length() == 0:
+            selectedCells =  cmds.scriptTable('table', q = True, selectedCells = True)
+            
+            if selectedCells != None:
+                
+                for i in range(0, len(selectedCells), 2):
+                    transformNode = cmds.scriptTable('table', cellIndex = (selectedCells[i], 1), q = True, cellValue = True)
+                    transformNode = str(transformNode).replace('[', '').replace(']', '').replace('\'', '')
+                    cmds.select(transformNode, add = True)
+                MSelectionList      = OpenMaya.MGlobal.getActiveSelectionList()
+            else:
+                OpenMaya.MGlobal.displayError('Nothing selected! Please select some poseScopes first.')
+                return
+        
+        for i in range(0, MSelectionList.length()):
+            MObj = MSelectionList.getDependNode(i)
+            MDagPath = OpenMaya.MDagPath.getAPathTo(MObj)
+            
+            for j in range(MDagPath.childCount()):
+                try:
+                    child = MDagPath.child(j)
+                except:
+                    continue
+
+                childDnFn = OpenMaya.MFnDependencyNode(child)
+
+                if childDnFn.typeName == 'mnt_poseScope':
+                    childDnFn.findPlug('opacity', False).setFloat(opacityValue)
+
+        self.updatePoseScopeTable()
+        OpenMaya.MGlobal.setActiveSelectionList(MSelectionList)
+        self.selectCellsFromSelection()
+        return
+
+    def applyHilightOpacity(self):
+        hilightOpacityValue = cmds.floatSliderButtonGrp('applyHilightOpacity', q = True, v = True)
+
+        MSelectionList      = OpenMaya.MGlobal.getActiveSelectionList()
+
+        if MSelectionList.length() == 0:
+            selectedCells =  cmds.scriptTable('table', q = True, selectedCells = True)
+            
+            if selectedCells != None:
+                
+                for i in range(0, len(selectedCells), 2):
+                    transformNode = cmds.scriptTable('table', cellIndex = (selectedCells[i], 1), q = True, cellValue = True)
+                    transformNode = str(transformNode).replace('[', '').replace(']', '').replace('\'', '')
+                    cmds.select(transformNode, add = True)
+                MSelectionList      = OpenMaya.MGlobal.getActiveSelectionList()
+            else:
+                OpenMaya.MGlobal.displayError('Nothing selected! Please select some poseScopes first.')
+                return
+        
+        for i in range(0, MSelectionList.length()):
+            MObj = MSelectionList.getDependNode(i)
+            MDagPath = OpenMaya.MDagPath.getAPathTo(MObj)
+            
+            for j in range(MDagPath.childCount()):
+                try:
+                    child = MDagPath.child(j)
+                except:
+                    continue
+
+                childDnFn = OpenMaya.MFnDependencyNode(child)
+
+                if childDnFn.typeName == 'mnt_poseScope':
+                    childDnFn.findPlug('hilightOpacity', False).setFloat(hilightOpacityValue)
+
+        self.updatePoseScopeTable()
+        OpenMaya.MGlobal.setActiveSelectionList(MSelectionList)
+        self.selectCellsFromSelection()
+        return
 
     def edit_cell(self, row, column, value):
         return 1
@@ -83,7 +209,11 @@ class mnt_poseScopeUI():
             if row%2 == 0:
                 return (64, 80, 100)
 
-        if column == 3:
+        if column == 3 or column == 4:
+            if row%2 == 1:
+                return (64, 64, 64)
+
+        if column == 5:
             if cmds.scriptTable('table', q = True, cellIndex = (row, column), cellValue = True)[0] == 'True':
                 return (48 + 64, 40 + 64, 64)
             else:
@@ -100,37 +230,65 @@ class mnt_poseScopeUI():
                 cmds.select(value, add = True)
         except:
             pass
+    
+    def selectCellsFromSelection(self, *args):
+        transformNodes  = []
+        cellsToSelect   = []
+
+        MSelectionList  = OpenMaya.MGlobal.getActiveSelectionList()
+        selectionList   = MSelectionList.getSelectionStrings()
+        rowNb           = cmds.scriptTable('table', q = True, r = True)
+        columnNb        = cmds.scriptTable('table', q = True, c = True)
+        for i in range(0, rowNb):
+            transformNode = cmds.scriptTable('table', cellIndex = (i + 1, 1), q = True, cellValue = True)
+            transformNode = str(transformNode).replace('[', '').replace(']', '').replace('\'', '')
+            transformNodes.append(transformNode)
+        
+        for item in selectionList:
+            for i in range(0, rowNb):
+                if transformNodes[i] == item:
+                    for j in range(0, columnNb):
+                        cellsToSelect.append(i + 1)
+                        cellsToSelect.append(j + 1)
+        
+        try:
+            cmds.scriptTable('table', e = True, selectedCells = cellsToSelect)
+        except:
+            pass
+        return
 
     def updatePoseScopeTable(self, *args):
         MSelectionList      = OpenMaya.MGlobal.getActiveSelectionList()
-        # I can do something to help about refresh here ...
+
         if MSelectionList.length() == 0:
             return
         
-        # I can do something here to search input mesh from poseScopes too ...
-        poseScopeInfos = self.getPoseScopesInfos()
+        poseScopeInfos = self.getPoseScopesInfos2()
 
         if poseScopeInfos == None:
             return
 
         cmds.scriptTable('table', e = True, clearTable = True)
+
         for i in range(0, cmds.scriptTable('table', q = True, rows = True)):
             cmds.scriptTable('table', e = True, deleteRow = (i+1))
 
-        if  len(poseScopeInfos[1]):
-            cmds.textFieldButtonGrp('getInfosControl', e = True, tx = poseScopeInfos[0])
-            cmds.scriptTable('table', edit = True, rows = len(poseScopeInfos[1]))
+        if  len(poseScopeInfos[0]):
+            cmds.scriptTable('table', edit = True, rows = len(poseScopeInfos[0]))
             
-            for i in range(0, len(poseScopeInfos[1])):
-                cmds.scriptTable('table', cellIndex = (i + 1, 1), edit = True, cellValue = poseScopeInfos[1][i])
-                cmds.scriptTable('table', cellIndex = (i + 1, 2), edit = True, cellValue = poseScopeInfos[2][i])
+            for i in range(0, len(poseScopeInfos[0])):
+                cmds.scriptTable('table', cellIndex = (i + 1, 1), edit = True, cellValue = poseScopeInfos[0][i])
+                cmds.scriptTable('table', cellIndex = (i + 1, 2), edit = True, cellValue = poseScopeInfos[1][i])
+                cmds.scriptTable('table', cellIndex = (i + 1, 3), edit = True, cellValue = round(poseScopeInfos[4][i], 3))
+                cmds.scriptTable('table', cellIndex = (i + 1, 4), edit = True, cellValue = round(poseScopeInfos[5][i], 3))
                 isVisible = cmds.getAttr(cmds.scriptTable('table', q = True, cellIndex = (i + 1, 1), cellValue = True)[0] + '.visibility')
                 
-                cmds.scriptTable('table', edit = True, cellIndex = (i + 1, 3), cellValue = isVisible)
+                cmds.scriptTable('table', edit = True, cellIndex = (i + 1, 5), cellValue = isVisible)
         else:
             return
 
         cmds.scriptTable('table', e = True, sm = 3)
+        self.selectCellsFromSelection()
         return
 
     def getRootNode(self, *args):
@@ -344,6 +502,7 @@ class mnt_poseScopeUI():
         
         OpenMaya.MGlobal.displayInfo('PoseScope infos exported.')
         # _________________
+        return
 
     def importPoseScopeInfos(self, *args):
         outputFolder = cmds.workspace(q = True, active = True) + '/data/poseScopes_infos/'
@@ -384,4 +543,5 @@ class mnt_poseScopeUI():
             poseScopeDNFn.findPlug('colorB', False).setDouble(poseScopesData['poseScopes'][i]['Color'][2])
             poseScopeDNFn.findPlug('opacity', False).setFloat(poseScopesData['poseScopes'][i]['Opacity'])
             poseScopeDNFn.findPlug('hilightOpacity', False).setFloat(poseScopesData['poseScopes'][i]['Hilight Opacity'])
-            # _________________________
+            # _________________________       
+        return
