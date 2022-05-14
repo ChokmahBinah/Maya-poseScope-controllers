@@ -1,5 +1,6 @@
 import os
 import json
+from re import S
 import maya.cmds as cmds
 import maya.api.OpenMaya as OpenMaya
 
@@ -85,19 +86,16 @@ class mnt_poseScopeUI():
         for i in range(0, MSelectionList.length()):
             MObj = MSelectionList.getDependNode(i)
             MDagPath = OpenMaya.MDagPath.getAPathTo(MObj)
-            
-            for j in range(MDagPath.childCount()):
-                try:
-                    child = MDagPath.child(j)
-                except:
-                    continue
+            shape = MDagPath.extendToShape()
+            shapeSel = OpenMaya.MSelectionList()
+            shapeSel.add(shape)
+            shapeObj = shapeSel.getDependNode(0)
+            shapeFnFn = OpenMaya.MFnDependencyNode(shapeObj)
 
-                childDnFn = OpenMaya.MFnDependencyNode(child)
-
-                if childDnFn.typeName == 'mnt_poseScope':
-                    childDnFn.findPlug('colorR', False).setDouble(colorValue[0])
-                    childDnFn.findPlug('colorG', False).setDouble(colorValue[1])
-                    childDnFn.findPlug('colorB', False).setDouble(colorValue[2])
+            if shapeFnFn.typeName == 'mnt_poseScope':
+                shapeFnFn.findPlug('colorR', False).setDouble(colorValue[0])
+                shapeFnFn.findPlug('colorG', False).setDouble(colorValue[1])
+                shapeFnFn.findPlug('colorB', False).setDouble(colorValue[2])
         
         self.selectCellsFromSelection()
         return
@@ -124,18 +122,15 @@ class mnt_poseScopeUI():
         for i in range(0, MSelectionList.length()):
             MObj = MSelectionList.getDependNode(i)
             MDagPath = OpenMaya.MDagPath.getAPathTo(MObj)
+            shape = MDagPath.extendToShape()
+            shapeSel = OpenMaya.MSelectionList()
+            shapeSel.add(shape)
+            shapeObj = shapeSel.getDependNode(0)
+            shapeFnFn = OpenMaya.MFnDependencyNode(shapeObj)
+
+            if shapeFnFn.typeName == 'mnt_poseScope':
+                shapeFnFn.findPlug('opacity', False).setFloat(opacityValue)
             
-            for j in range(MDagPath.childCount()):
-                try:
-                    child = MDagPath.child(j)
-                except:
-                    continue
-
-                childDnFn = OpenMaya.MFnDependencyNode(child)
-
-                if childDnFn.typeName == 'mnt_poseScope':
-                    childDnFn.findPlug('opacity', False).setFloat(opacityValue)
-
         self.updatePoseScopeTable()
         OpenMaya.MGlobal.setActiveSelectionList(MSelectionList)
         self.selectCellsFromSelection()
@@ -163,18 +158,15 @@ class mnt_poseScopeUI():
         for i in range(0, MSelectionList.length()):
             MObj = MSelectionList.getDependNode(i)
             MDagPath = OpenMaya.MDagPath.getAPathTo(MObj)
+            shape = MDagPath.extendToShape()
+            shapeSel = OpenMaya.MSelectionList()
+            shapeSel.add(shape)
+            shapeObj = shapeSel.getDependNode(0)
+            shapeFnFn = OpenMaya.MFnDependencyNode(shapeObj)
             
-            for j in range(MDagPath.childCount()):
-                try:
-                    child = MDagPath.child(j)
-                except:
-                    continue
-
-                childDnFn = OpenMaya.MFnDependencyNode(child)
-
-                if childDnFn.typeName == 'mnt_poseScope':
-                    childDnFn.findPlug('hilightOpacity', False).setFloat(hilightOpacityValue)
-
+            if shapeFnFn.typeName == 'mnt_poseScope':
+                shapeFnFn.findPlug('hilightOpacity', False).setFloat(hilightOpacityValue)
+            
         self.updatePoseScopeTable()
         OpenMaya.MGlobal.setActiveSelectionList(MSelectionList)
         self.selectCellsFromSelection()
