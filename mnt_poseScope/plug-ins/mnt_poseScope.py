@@ -338,11 +338,6 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
     sShadedName = 'poseScopeShader'
     Mnt_poseScopeNode_inputMeshDirtyCallback = None
 
-    '''class InstanceInfo:#...?
-        def __init__(self, transform, isSelected):
-            self.fTransform = transform
-            self.fIsSelected = isSelected'''
-
     @staticmethod
     def creator(obj):
         return Mnt_poseScopeSubSceneOverride(obj)
@@ -360,7 +355,8 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
         self.shaderOpacity                  = None  
         self.inputFacesPositionBuffer       = None
         #self.inputFacesNormalBuffer         = None
-        self.inputFacesShadedIndexBuffer    = None  
+        self.inputFacesShadedIndexBuffer    = None
+        self.inputMeshMatrix                = None
 
     def getInputFaces(self):
         inputMeshPlug   = self.node.findPlug('inputMesh', False)
@@ -370,9 +366,11 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
             node = connections[i].node()
 
             if node.hasFn(OpenMaya.MFn.kMesh):
+                nodePath            = OpenMaya.MDagPath().getAPathTo(node)
+                self.inputMeshMatrix = nodePath.exclusiveMatrix()
                 self.inputMeshFn    = OpenMaya.MFnMesh(node)
                 self.shape          = node
-                break            
+                break
 
         inputFaceComponentsPlug     = self.node.findPlug('inputFaceComponents', False)
         try: 
@@ -392,33 +390,6 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
             raise
         return
 
-    def getWorldMatrix(self):
-        try:
-            inputMeshParent             = OpenMaya.MFnDagNode(self.shape).parent(0)
-        except:
-            return
-
-        fnInputMeshParent           = OpenMaya.MFnDependencyNode(inputMeshParent)
-        inputMeshWorldMatrixAttr    = fnInputMeshParent.attribute('worldMatrix')
-        inputMeshWorldMatrixPlug    = OpenMaya.MPlug(inputMeshParent, inputMeshWorldMatrixAttr)
-        inputMeshWorldMatrixPlug    = inputMeshWorldMatrixPlug.elementByLogicalIndex(0)
-        inputMeshWorldMatrixObj     = inputMeshWorldMatrixPlug.asMObject()
-        inputMeshWorldMatrixData    = OpenMaya.MFnMatrixData(inputMeshWorldMatrixObj)
-        inputMeshWorldMatrix        = inputMeshWorldMatrixData.matrix()
-
-        MObjFn              = OpenMaya.MFnDagNode(self.MObj)
-        MObjParent          = MObjFn.parent(0)
-        fnMObjParent        = OpenMaya.MFnDependencyNode(MObjParent)
-        worldMatrixAttr     = fnMObjParent.attribute('worldMatrix')
-        matrixPlug          = OpenMaya.MPlug(MObjParent, worldMatrixAttr)
-        matrixPlug          = matrixPlug.elementByLogicalIndex(0)
-        worldMatrixObject   = matrixPlug.asMObject()
-        worldMatrixData     = OpenMaya.MFnMatrixData(worldMatrixObject)
-        worldMatrix         = worldMatrixData.matrix().inverse()
-
-        outputMatrix        = inputMeshWorldMatrix.__mul__(worldMatrix)
-        return outputMatrix
-
     def supportedDrawAPIs(self):
         return OpenMayaRender.MRenderer.kOpenGL | OpenMayaRender.MRenderer.kDirectX11 | OpenMayaRender.MRenderer.kOpenGLCoreProfile
 
@@ -426,12 +397,12 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
         self.fMesh.doRefresh = True
         return
 
-    def requiresUpdate(self, container, frameContext):                      
+    def requiresUpdate(self, container, frameContext):                     
         # Nothing in the container, definitively need to update.
         if len(container) == 0:
             return True
         # ______________________________________________________
-
+        
         if self.Mnt_poseScopeNode_inputMeshDirtyCallback == None:
             try:
                 self.oldShape = self.shape
@@ -464,11 +435,12 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
         MFnDagNode  = OpenMaya.MFnDagNode(self.MObj)
         MObjParent  = MFnDagNode.parent(0)
         MFnParent   = OpenMaya.MFnDependencyNode(MObjParent)
+        MParentPath = OpenMaya.MDagPath.getAPathTo(MObjParent)
 
         self.shaderColor    = self.node.findPlug('color', False).asMDataHandle().asFloat3()
         self.shaderOpacity  = self.node.findPlug('opacity', False).asFloat()
 
-        if MActiveSel.length() > 0 and MFnParent.name() in MActiveSel.getSelectionStrings():
+        if MActiveSel.length() > 0 and MActiveSel.hasItem(MParentPath):
             self.shaderOpacity = self.node.findPlug('hilightOpacity', False).asFloat()
         # _____________________________________________________________________
 
@@ -539,11 +511,10 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
             return
 
         self.setGeometryForRenderItem(shadedItem, buffers, self.inputFacesShadedIndexBuffer, None)
-        #shadedItem.setMatrix(OpenMaya.MMatrix.kIdentity)
+        shadedItem.setMatrix(self.inputMeshMatrix)
         
     def rebuildGeometryBuffers(self):
         self.clearGeometryBuffers()
-        matrix          = self.getWorldMatrix()
 
         # Compute mesh data size of inputFaces
         numTriangles    = 0
@@ -556,7 +527,7 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
             inputMeshTriangles  = self.inputMeshFn.getTriangles()
         except:
             return
-        
+
         for i in facesSet:
             numVerts = len(self.inputMeshFn.getPolygonVertices(i))
             if numVerts > 2:
@@ -566,7 +537,7 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
             for j in range(0, faceTriNb):
                 triVert = self.inputMeshFn.getPolygonTriangleVertices(i, j)
                 for k in triVert:
-                    point = self.inputMeshFn.getPoint(k).__mul__(matrix)
+                    point = self.inputMeshFn.getPoint(k)
                     try:
                         vertices.append(point)
                         self.fMesh.BBox.expand(point)# Expand BBox
@@ -579,9 +550,6 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
         # Acquire vertex buffer ressources
         posDesc = OpenMayaRender.MVertexBufferDescriptor('', OpenMayaRender.MGeometry.kPosition, OpenMayaRender.MGeometry.kFloat, 3)
         self.inputFacesPositionBuffer = OpenMayaRender.MVertexBuffer(posDesc)
-
-        '''if self.inputFacesPositionBuffer is None:
-            return'''
 
         positionDataAddress = self.inputFacesPositionBuffer.acquire(totalVerts, True)   
         positionData        = ((ctypes.c_float * 3) * totalVerts).from_address(positionDataAddress)
@@ -616,7 +584,6 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
 
         # Create index buffer        
         if numFaces > 0:
-
             if self.inputFacesShadedIndexBuffer == None:
                 self.inputFacesShadedIndexBuffer = OpenMayaRender.MIndexBuffer(OpenMayaRender.MGeometry.kUnsignedInt32)
 
@@ -628,15 +595,7 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
                     idx = 0
                     vid = 0
 
-                # Creates faces connection list from input infos
-                #faceConnects = OpenMaya.MIntArray()
-                #for i in range(0, totalVerts):
-                #    faceConnects.append(i)
-
                     for i in range(numTriangles):
-                        #inputFacesData[idx][0] = faceConnects[vid]
-                        #inputFacesData[idx][1] = faceConnects[vid + 1]
-                        #inputFacesData[idx][2] = faceConnects[vid + 2]            
                         inputFacesData[idx][0] = vid
                         inputFacesData[idx][1] = vid + 1
                         inputFacesData[idx][2] = vid + 2          
@@ -647,12 +606,10 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
                     inputFacesDataAddress = None
                     inputFacesData = None
         # ___________________
-        #self.fMesh.setInputMeshChangedSinceUpdate(False)
         self.fMesh.doRefresh = False
 
     def clearGeometryBuffers(self, *args):
         self.inputFacesPositionBuffer       = None
-        #self.inputFacesNormalBuffer        = None
         self.inputFacesShadedIndexBuffer    = None
 # __________________________________
 
@@ -731,7 +688,7 @@ class Mnt_CreatePoseScopeShapeCmd(OpenMaya.MPxCommand):
                 # Gets components list data from selection
                 componentsListData.add(components[1])
                 # ________________________________________
-
+            
         # Creates mnt_poseScope DAG node.
         DGModifier                  = OpenMaya.MDGModifier()
         poseScopeDagNodeFn          = OpenMaya.MFnDagNode()
@@ -998,12 +955,14 @@ class Mnt_TogglePoseScopeShapesVisibilityCmd(OpenMaya.MPxCommand):
                     if zeroPathChildDnFn.typeName == 'mnt_poseScope':
                         
                         for i in range(0, path.childCount()):
-                            childNode = OpenMaya.MFnDagNode(path.child(i))                     
-                            
+                            childNode = OpenMaya.MFnDagNode(path.child(i))
+
                             if path.child(i).apiType() == OpenMaya.MFn.kMesh or path.child(i).apiType() == OpenMaya.MFn.kNurbsCurve\
-                            or path.child(i).apiType() == OpenMaya.MFn.kPluginShape or path.child(i).apiType() == OpenMaya.MFn.kNurbsSurface:
+                            or path.child(i).apiType() == OpenMaya.MFn.kPluginShape or path.child(i).apiType() == OpenMaya.MFn.kNurbsSurface\
+                            or path.child(i).apiType() == OpenMaya.MFn.kPluginLocatorNode:
+
                                 childDnFn = OpenMaya.MFnDependencyNode(path.child(i))
-                                
+
                                 if childDnFn.typeName != 'mnt_poseScope':      
                                     visibilityPlug = childDnFn.findPlug('visibility', False)
                                     visibilityValue = visibilityPlug.asBool()
@@ -1343,7 +1302,7 @@ class Mnt_transfertPoseScopesCmd(OpenMaya.MPxCommand):
 # _______________
 
 # Trying to create a context selection for this node...
-'''import math
+import math
 import maya.cmds as cmds # ForContext creation. Have to try avoid this in the future
 
 class Mnt_poseScopeContextCmd(OpenMayaUI.MPxContextCommand):
@@ -1596,7 +1555,7 @@ class Mnt_poseScopeContext(OpenMayaUI.MPxContext):
                     try:
                         self.poseScopeShapePointsArray.append(point)  
                     except:
-                        raise'''
+                        raise
 # _____________________________________________________
 
 def initializePlugin(obj):
@@ -1624,11 +1583,11 @@ def initializePlugin(obj):
     except:
         OpenMaya.MGlobal.displayError('Failed to register createPoseScopeShape command.\n')
 
-    '''try:
+    try:
         plugin.registerContextCommand(Mnt_poseScopeContextCmd.kPluginCmdName, Mnt_poseScopeContextCmd.creator)
     except:
         OpenMaya.MGlobal.displayError('Failed to register Mnt_poseScope context command.\n')
-        raise'''
+        raise
 
 def uninitializePlugin(obj):
     plugin = OpenMaya.MFnPlugin(obj)
@@ -1656,7 +1615,7 @@ def uninitializePlugin(obj):
     except:
         OpenMaya.MGlobal.displayError('Failed to deregister createPoseScopeShape command.\n')
 
-    '''try:
+    try:
         plugin.deregisterContextCommand(Mnt_poseScopeContextCmd.kPluginCmdName)
     except:
-        OpenMaya.MGlobal.displayError('Failed to deregister Mnt_poseScope context command.\n')'''
+        OpenMaya.MGlobal.displayError('Failed to deregister Mnt_poseScope context command.\n')
