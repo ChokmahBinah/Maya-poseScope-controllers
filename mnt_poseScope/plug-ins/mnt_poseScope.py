@@ -23,7 +23,8 @@ class Mnt_poseScopeNode(OpenMaya.MPxSurfaceShape):
 
     fsInteractiveMode           = False
     fsXRayMode                  = False
-    doRefresh                   = True
+    doRefreshVtxBuffer          = True
+    doRefreshIdxBuffer          = True
     shape                       = OpenMaya.MObject()
 
     def __init__(self):
@@ -107,10 +108,10 @@ class Mnt_poseScopeNode(OpenMaya.MPxSurfaceShape):
 
     def connectionMade(self, plug, otherPlug, asSrc):
         if not asSrc and plug.attribute() == Mnt_poseScopeNode.inFaceComponentsAttribute:
-            self.doRefresh = True
+            self.doRefreshIdxBuffer = True
 
         if not asSrc and plug.attribute() == Mnt_poseScopeNode.inMeshObjAttribute:
-            self.doRefresh = True
+            self.doRefreshVtxBuffer = True
 
         return OpenMaya.MPxNode.connectionMade(self, plug, otherPlug, asSrc)
 
@@ -133,10 +134,10 @@ class Mnt_poseScopeNode(OpenMaya.MPxSurfaceShape):
                 self.fsXRayMode = False
 
         if plug.attribute() == Mnt_poseScopeNode.inFaceComponentsAttribute:
-            self.doRefresh = True
+            self.doRefreshIdxBuffer = True
         
         if plug.attribute() == Mnt_poseScopeNode.inMeshObjAttribute:
-            self.doRefresh = True
+            self.doRefreshVtxBuffer = True
 
     def preEvaluation(self, context, evaluationNode):
         return
@@ -394,7 +395,7 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
         return OpenMayaRender.MRenderer.kOpenGL | OpenMayaRender.MRenderer.kDirectX11 | OpenMayaRender.MRenderer.kOpenGLCoreProfile
 
     def refresh(self, *args):
-        self.fMesh.doRefresh = True
+        self.fMesh.doRefreshVtxBuffer = True
         return
 
     def requiresUpdate(self, container, frameContext):                     
@@ -499,7 +500,7 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
 
         # Set up shared geometry if necessary.
         if updateGeometry:
-            if self.fMesh.doRefresh == True:
+            if self.fMesh.doRefreshVtxBuffer == True:
                 self.rebuildGeometryBuffers()
         # ____________________________________
 
@@ -582,35 +583,38 @@ class Mnt_poseScopeSubSceneOverride(OpenMayaRender.MPxSubSceneOverride):
         normalDataAddress = None'''
         # ________________________________
 
-        # Create index buffer        
-        if numFaces > 0:
-            if self.inputFacesShadedIndexBuffer == None:
-                self.inputFacesShadedIndexBuffer = OpenMayaRender.MIndexBuffer(OpenMayaRender.MGeometry.kUnsignedInt32)
+        # Create index buffer
+        if self.fMesh.doRefreshIdxBuffer == True:
+            self.inputFacesShadedIndexBuffer = None
 
-                inputFacesDataAddress = self.inputFacesShadedIndexBuffer.acquire(totalVerts, True)
-            
-                if inputFacesDataAddress:
-                    inputFacesData = ((ctypes.c_uint * 3) * numTriangles).from_address(inputFacesDataAddress)
+            if numFaces > 0:
+                if self.inputFacesShadedIndexBuffer == None:
+                    self.inputFacesShadedIndexBuffer = OpenMayaRender.MIndexBuffer(OpenMayaRender.MGeometry.kUnsignedInt32)
 
-                    idx = 0
-                    vid = 0
+                    inputFacesDataAddress = self.inputFacesShadedIndexBuffer.acquire(totalVerts, True)
+                
+                    if inputFacesDataAddress:
+                        inputFacesData = ((ctypes.c_uint * 3) * numTriangles).from_address(inputFacesDataAddress)
 
-                    for i in range(numTriangles):
-                        inputFacesData[idx][0] = vid
-                        inputFacesData[idx][1] = vid + 1
-                        inputFacesData[idx][2] = vid + 2          
-                        idx += 1                    
-                        vid += 3
-                                        
-                    self.inputFacesShadedIndexBuffer.commit(inputFacesDataAddress)
-                    inputFacesDataAddress = None
-                    inputFacesData = None
+                        idx = 0
+                        vid = 0
+
+                        for i in range(numTriangles):
+                            inputFacesData[idx][0] = vid
+                            inputFacesData[idx][1] = vid + 1
+                            inputFacesData[idx][2] = vid + 2          
+                            idx += 1                    
+                            vid += 3
+                                            
+                        self.inputFacesShadedIndexBuffer.commit(inputFacesDataAddress)
+                        inputFacesDataAddress = None
+                        inputFacesData = None
         # ___________________
-        self.fMesh.doRefresh = False
+        self.fMesh.doRefreshVtxBuffer = False
+        self.fMesh.doRefreshIdxBuffer = False
 
     def clearGeometryBuffers(self, *args):
         self.inputFacesPositionBuffer       = None
-        self.inputFacesShadedIndexBuffer    = None
 # __________________________________
 
 # Needed for registtering the node shape
